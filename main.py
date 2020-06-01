@@ -15,7 +15,6 @@ import math
 from scipy import signal
 
 
-
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
 
@@ -63,6 +62,13 @@ df = pd.DataFrame.from_dict(sample)
 
 
 
+def butter_lowpass_filter(data, fs, order):
+    # Get the filter coefficients 
+    b, a = signal.butter(order, fs, 'low', analog=False)
+    y = signal.filtfilt(b, a, data)
+    return y
+
+
 
 def preProcessEMGSegment(EMGsegment_in):
     
@@ -73,13 +79,31 @@ def preProcessEMGSegment(EMGsegment_in):
     else:
         EMGnormalized = EMGsegment_in    
              
-    EMGrectified = abs(EMGnormalized)
-    
-    return EMGrectified
+    EMGrectified = abs(EMGnormalized)   
+    EMGsegment_out = butter_lowpass_filter(EMGrectified, 0.1, 5) 
+    return EMGsegment_out
 
 
 
-df_new = df.apply(preProcessEMGSegment)
+# def detectMuscleActivity(emgSignal)
+#     fs = 200
+#     minWindowLength_Segmentation =  100
+#     numFreq_Spec = 50;
+#     hammingWdw_Length = 25;
+#     numSamples_lapBetweenWdws = 10;
+#     threshForSum_AlongFreqInSpec = 10
+        
+
+
+
+
+
+df = df.apply(preProcessEMGSegment)
+df_sum  = df.sum(axis=1)
+
+
+
+
         
     
 
