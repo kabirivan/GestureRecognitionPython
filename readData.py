@@ -19,3 +19,4 @@ for i in range(1,6):
     
     
     
+df["new_column"] = df.apply(lambda x: fxy(x['A'], 100), axis=1)

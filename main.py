@@ -10,6 +10,7 @@ Created on Sun May 31 21:06:52 2020
 import json
 import os
 import itertools
+import pandas as pd
 
 
 folderData = 'trainingJSON'
@@ -22,7 +23,7 @@ for root, dirs, files in os.walk(folderData):
      print('Dataset Ready !')
          
          
-file_selected = root + '/' + files[0]  
+file_selected = root + '/' + files[2]  
 
 with open(file_selected) as file:
     user = json.load(file)     
@@ -53,8 +54,36 @@ for i in range(1,26):
     
 
 
+sample = train_noGesture[0]
+df = pd.DataFrame.from_dict(sample)
 
 
+def preProcessEMGSegment(EMGsegment_in):
+    
+    EMG = max(EMGsegment_in)
+    
+    if EMG > 1:
+        EMGnormalized = EMGsegment_in/128
+    else:
+        EMGnormalized = EMGsegment_in;    
+    
+    return EMGnormalized
+
+
+def suma(x):
+    return x * 100
+                
+def multiplyData(x, y, z):
+   return (x * y)/z
+
+
+#print(df['ch1'])
+
+print(max(df['ch1']))
+
+df_new = df.apply(multiplyData, y=10000, z=10)
+        
+    
 
 
 
