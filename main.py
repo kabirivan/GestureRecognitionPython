@@ -9,9 +9,11 @@ Created on Sun May 31 21:06:52 2020
 
 import json
 import os
+import itertools
+
 
 folderData = 'trainingJSON'
-gestures = ['noGesture', 'open', 'fist', 'waveIn', 'waveOut', 'pinch']
+gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
 
 
 files = []
@@ -27,16 +29,28 @@ with open(file_selected) as file:
 
 # Training Process
 train_samples = user['trainingSamples']
-train_noGesture = train_samples.get('noGesture')
-train_fist = train_samples.get('fist')
-train_open= train_samples.get('open')
-train_pinch = train_samples.get('pinch')
-train_waveIn = train_samples.get('waveIn')
-train_waveOut = train_samples.get('waveOut')
+
+ 
+
+train_noGesture = []
+train_open = []
+train_fist = []
+train_waveIn = []
+train_waveOut = []
+train_pinch =[]
 
 
-for item in train_samples.values():
-   train_gesture.append(item)
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
+
+    
+for i in range(1,26):       
+    train_noGesture.append(train_samples['noGesture']['sample%s' %i]['emg'])
+    train_fist.append(train_samples['fist']['sample%s' %i]['emg'])
+    train_waveIn.append(train_samples['waveIn']['sample%s' %i]['emg'])
+    train_waveOut.append(train_samples['waveOut']['sample%s' %i]['emg'])
+    train_open.append(train_samples['open']['sample%s' %i]['emg'])
+    train_pinch .append(train_samples['pinch']['sample%s' %i]['emg'])
+    
 
 
 
