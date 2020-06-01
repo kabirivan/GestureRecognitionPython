@@ -11,6 +11,9 @@ import json
 import os
 import itertools
 import pandas as pd
+import math
+from scipy import signal
+
 
 
 folderData = 'trainingJSON'
@@ -58,6 +61,9 @@ sample = train_noGesture[0]
 df = pd.DataFrame.from_dict(sample)
 
 
+
+
+
 def preProcessEMGSegment(EMGsegment_in):
     
     EMG = max(EMGsegment_in)
@@ -65,23 +71,15 @@ def preProcessEMGSegment(EMGsegment_in):
     if EMG > 1:
         EMGnormalized = EMGsegment_in/128
     else:
-        EMGnormalized = EMGsegment_in;    
+        EMGnormalized = EMGsegment_in    
+             
+    EMGrectified = abs(EMGnormalized)
     
-    return EMGnormalized
+    return EMGrectified
 
 
-def suma(x):
-    return x * 100
-                
-def multiplyData(x, y, z):
-   return (x * y)/z
 
-
-#print(df['ch1'])
-
-print(max(df['ch1']))
-
-df_new = df.apply(multiplyData, y=10000, z=10)
+df_new = df.apply(preProcessEMGSegment)
         
     
 
