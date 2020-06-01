@@ -11,6 +11,7 @@ import json
 import os
 
 folderData = 'trainingJSON'
+gestures = ['noGesture', 'open', 'fist', 'waveIn', 'waveOut', 'pinch']
 
 
 files = []
@@ -19,7 +20,24 @@ for root, dirs, files in os.walk(folderData):
      print('Dataset Ready !')
          
          
-# user = files[0]       
+file_selected = root + '/' + files[0]  
+
+with open(file_selected) as file:
+    user = json.load(file)     
+
+# Training Process
+train_samples = user['trainingSamples']
+train_noGesture = train_samples.get('noGesture')
+train_fist = train_samples.get('fist')
+train_open= train_samples.get('open')
+train_pinch = train_samples.get('pinch')
+train_waveIn = train_samples.get('waveIn')
+train_waveOut = train_samples.get('waveOut')
+
+
+for item in train_samples.values():
+   train_gesture.append(item)
+
 
 
 
@@ -35,8 +53,7 @@ for root, dirs, files in os.walk(folderData):
 
 
 
-# with open('user1test.json') as file:
-#     data = json.load(file)
+
 
 
 
