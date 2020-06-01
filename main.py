@@ -13,6 +13,7 @@ import itertools
 import pandas as pd
 import math
 from scipy import signal
+import numpy as np
 
 
 folderData = 'trainingJSON'
@@ -85,24 +86,50 @@ def preProcessEMGSegment(EMGsegment_in):
 
 
 
-# def detectMuscleActivity(emgSignal)
-#     fs = 200
-#     minWindowLength_Segmentation =  100
-#     numFreq_Spec = 50;
-#     hammingWdw_Length = 25;
-#     numSamples_lapBetweenWdws = 10;
-#     threshForSum_AlongFreqInSpec = 10
+def detectMuscleActivity(emgSignal):
+    fs = 200
+    minWindowLength_Segmentation =  100
+    hammingWdw_Length = 50
+    numSamples_lapBetweenWdws = 35
+    threshForSum_AlongFreqInSpec = 10
+    # Computing the spectrogram of the EMG
+    f, t, Sxx = signal.spectrogram(emgSignal, fs, window = signal.hamming(hammingWdw_Length), noverlap = numSamples_lapBetweenWdws)
+    # Summing the spectrogram along the frequencies
+    sumAlongFreq = [sum(x) for x in zip(*Sxx)]
+    
+    greaterThanThresh = []
+ 
+    # Thresholding the sum sumAlongFreq
+    for item in sumAlongFreq:
+        if item >= threshForSum_AlongFreqInSpec:
+           greaterThanThresh.append(1)
+        else:
+           greaterThanThresh.append(0)
+           
+    greaterThanThresh.insert(0,0)       
+    greaterThanThresh.append(0)    
+    diffGreaterThanThresh = abs(np.diff(greaterThanThresh))
+    
+    if diffGreaterThanThresh[-1] == 1:
+        diffGreaterThanThresh[-2] = 1;
+
+    x = diffGreaterThanThresh[1:-2];
+    
+    idxNonZero = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
+    idxOfSamples = fs*t
+    idxOfSamples = np.floor(idxOfSamples) 
+    numIdxNonZero = len(idxNonZero)
+           
+    return idxOfSamples
+
         
-
-
 
 
 
 df = df.apply(preProcessEMGSegment)
 df_sum  = df.sum(axis=1)
 
-
-
+f = detectMuscleActivity(df_sum) 
 
         
     
