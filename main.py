@@ -14,6 +14,9 @@ import pandas as pd
 import math
 from scipy import signal
 import numpy as np
+import simplespectral as sp
+import matplotlib.pyplot as plt
+import imagesc as imagesc
 
 
 folderData = 'trainingJSON'
@@ -34,31 +37,12 @@ with open(file_selected) as file:
 # Training Process
 train_samples = user['trainingSamples']
 
- 
-
 train_noGesture = []
 train_open = []
 train_fist = []
 train_waveIn = []
 train_waveOut = []
 train_pinch =[]
-
-
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
-
-    
-for i in range(1,26):       
-    train_noGesture.append(train_samples['noGesture']['sample%s' %i]['emg'])
-    train_fist.append(train_samples['fist']['sample%s' %i]['emg'])
-    train_waveIn.append(train_samples['waveIn']['sample%s' %i]['emg'])
-    train_waveOut.append(train_samples['waveOut']['sample%s' %i]['emg'])
-    train_open.append(train_samples['open']['sample%s' %i]['emg'])
-    train_pinch .append(train_samples['pinch']['sample%s' %i]['emg'])
-    
-
-
-sample = train_noGesture[0]
-df = pd.DataFrame.from_dict(sample)
 
 
 
@@ -81,21 +65,28 @@ def preProcessEMGSegment(EMGsegment_in):
         EMGnormalized = EMGsegment_in    
              
     EMGrectified = abs(EMGnormalized)   
-    EMGsegment_out = butter_lowpass_filter(EMGrectified, 0.1, 5) 
+    EMGsegment_out = butter_lowpass_filter(EMGrectified, 0.1, 5)
+    
+    
     return EMGsegment_out
 
 
 
 def detectMuscleActivity(emgSignal):
+    
+    
     fs = 200
     minWindowLength_Segmentation =  100
-    hammingWdw_Length = 50
-    numSamples_lapBetweenWdws = 35
+    hammingWdw_Length = 25
+    numSamples_lapBetweenWdws = 10
     threshForSum_AlongFreqInSpec = 10
     # Computing the spectrogram of the EMG
-    f, t, Sxx = signal.spectrogram(emgSignal, fs, window = signal.hamming(hammingWdw_Length), noverlap = numSamples_lapBetweenWdws)
+    Sxx, freqs, time, im = plt.specgram(emgSignal, NFFT = 25, Fs = 200, window = np.hamming(25), noverlap = 10)
+    #Sxx, freqs, time, im = emgSignal.specgram(x = emgSignal, NFFT=FFT, window = numpy.hamming(25), Fs = 200, noverlap = 10)       
     # Summing the spectrogram along the frequencies
     sumAlongFreq = [sum(x) for x in zip(*Sxx)]
+    
+
     
     greaterThanThresh = []
  
@@ -115,24 +106,75 @@ def detectMuscleActivity(emgSignal):
 
     x = diffGreaterThanThresh[1:-2];
     
-    idxNonZero = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
-    idxOfSamples = fs*t
-    idxOfSamples = np.floor(idxOfSamples) 
+    findNumber = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
+    idxNonZero = findNumber(1,x)
     numIdxNonZero = len(idxNonZero)
-           
-    return idxOfSamples
-
-        
-
-
-
-df = df.apply(preProcessEMGSegment)
-df_sum  = df.sum(axis=1)
-
-f = detectMuscleActivity(df_sum) 
-
-        
+    idx_Samples = fs*time
+    idx_Samples = np.floor(idx_Samples) 
     
+    if numIdxNonZero == 0:
+        idx_Start = 1
+        idx_End = len(emgSignal)
+    elif numIdxNonZero == 1:
+        idx_Start = idx_Samples[idxNonZero[0]]
+        idx_End = len(emgSignal)
+    else:
+        idx_Start = idx_Samples[idxNonZero[0]]
+        idx_End = idx_Samples[idxNonZero[-2]]
+    
+    numExtraSamples = 25
+    idx_Start = max(1,idx_Start - numExtraSamples)
+    idx_End = min(len(emgSignal), idx_End + numExtraSamples)
+    
+    if (idx_End - idx_Start) < minWindowLength_Segmentation:
+        idx_Start = 1
+        idx_End = len(emgSignal)
+
+
+    
+    return idx_Start, idx_End
+
+ 
+       
+
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
+segmentation = False
+    
+for i in range(1,26):       
+    train_noGesture.append(train_samples['noGesture']['sample%s' %i]['emg'])
+    train_fist.append(train_samples['fist']['sample%s' %i]['emg'])
+    train_waveIn.append(train_samples['waveIn']['sample%s' %i]['emg'])
+    train_waveOut.append(train_samples['waveOut']['sample%s' %i]['emg'])
+    train_open.append(train_samples['open']['sample%s' %i]['emg'])
+    train_pinch .append(train_samples['pinch']['sample%s' %i]['emg'])
+    
+
+
+sample = train_noGesture[0]
+df = pd.DataFrame.from_dict(sample)
+df = df.apply(preProcessEMGSegment)
+
+if segmentation == True:
+    df_sum  = df.sum(axis=1)
+    idx_Start, idx_End = detectMuscleActivity(df_sum)
+else:
+    idx_Start = 0;
+    idx_End = len(df)
+    
+df.iloc[idx_Start:idx_End]
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
