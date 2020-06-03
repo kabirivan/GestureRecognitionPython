@@ -94,20 +94,31 @@ import pandas as pd
 #    print(case_list)
 
 
+# test library 1 dtw
+# import numpy as np
+
+# ## A noisy sine wave as query
+# idx = np.linspace(0,6.28,num=100)
+# query = np.sin(idx) + np.random.uniform(size=100)/10.0
+
+# ## A cosine is for template; sin and cos are offset by 25 samples
+# template = np.cos(idx)
+
+# ## Find the best match with the canonical recursion formula
+# from dtw import *
+# alignment = dtw(query, template, keep_internals=True)
+
+# ## Display the warping curve, i.e. the alignment curve
+# alignment.plot(type="threeway")
+
+
+from dtaidistance import dtw
+from dtaidistance import dtw_visualisation as dtwvis
 import numpy as np
-
-## A noisy sine wave as query
-idx = np.linspace(0,6.28,num=100)
-query = np.sin(idx) + np.random.uniform(size=100)/10.0
-
-## A cosine is for template; sin and cos are offset by 25 samples
-template = np.cos(idx)
-
-## Find the best match with the canonical recursion formula
-from dtw import *
-alignment = dtw(query, template, keep_internals=True)
-
-## Display the warping curve, i.e. the alignment curve
-alignment.plot(type="threeway")
-
+x = np.arange(0, 20, .5)
+s1 = np.sin(x)
+s2 = np.sin(x - 1)
+d, paths = dtw.warping_paths(s1, s2, window=25, psi=2)
+best_path = dtw.best_path(paths)
+dtwvis.plot_warpingpaths(s1, s2, paths, best_path)
 
