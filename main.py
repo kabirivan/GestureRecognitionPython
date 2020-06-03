@@ -17,6 +17,8 @@ import numpy as np
 import simplespectral as sp
 import matplotlib.pyplot as plt
 import imagesc as imagesc
+from dtaidistance import dtw
+
 
 
 folderData = 'trainingJSON'
@@ -77,11 +79,11 @@ def detectMuscleActivity(emgSignal):
     
     fs = 200
     minWindowLength_Segmentation =  100
-    hammingWdw_Length = 25
+    hammingWdw_Length = np.hamming(25)
     numSamples_lapBetweenWdws = 10
     threshForSum_AlongFreqInSpec = 10
     # Computing the spectrogram of the EMG
-    Sxx, freqs, time, im = plt.specgram(emgSignal, NFFT = 25, Fs = 200, window = np.hamming(25), noverlap = 10)
+    Sxx, freqs, time, im = plt.specgram(emgSignal, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws)
     #Sxx, freqs, time, im = emgSignal.specgram(x = emgSignal, NFFT=FFT, window = numpy.hamming(25), Fs = 200, noverlap = 10)       
     # Summing the spectrogram along the frequencies
     sumAlongFreq = [sum(x) for x in zip(*Sxx)]
@@ -148,23 +150,37 @@ for i in range(1,26):
     train_open.append(train_samples['open']['sample%s' %i]['emg'])
     train_pinch .append(train_samples['pinch']['sample%s' %i]['emg'])
     
-
-
-sample = train_noGesture[0]
-df = pd.DataFrame.from_dict(sample)
-df = df.apply(preProcessEMGSegment)
-
-if segmentation == True:
-    df_sum  = df.sum(axis=1)
-    idx_Start, idx_End = detectMuscleActivity(df_sum)
-else:
-    idx_Start = 0;
-    idx_End = len(df)
     
-df.iloc[idx_Start:idx_End]
+
+
+    
+
+train_FilteredX = []
+
+
+for i in range(0,25):
+    sample = train_noGesture[i]
+    df = pd.DataFrame.from_dict(sample)
+    df = df.apply(preProcessEMGSegment)
+    
+    if segmentation == True:
+        df_sum  = df.sum(axis=1)
+        idx_Start, idx_End = detectMuscleActivity(df_sum)
+    else:
+        idx_Start = 0;
+        idx_End = len(df)
+        
+    df.iloc[idx_Start:idx_End]
+    
+    train_FilteredX.append(df)
+    
+a = train_FilteredX[0]
+b = train_FilteredX[1]
 
 
 
+
+path = dtw.distance_matrix_fast(a, b)
 
 
 
