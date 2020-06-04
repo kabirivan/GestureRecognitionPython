@@ -151,8 +151,7 @@ for i in range(1,26):
     
     
 
-
-    
+ 
 
 train_FilteredX = []
 
@@ -176,26 +175,26 @@ for i in range(0,25):
 a = train_FilteredX[0]
 b = train_FilteredX[4]
 
-mtxDistances_class_i = []
+distances = []
 c = 0
 
 
 
 column = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25']
-df_ = pd.DataFrame(columns = column)
-df_ = df_.fillna(0) # with 0s rather than NaNs
-print(len(df_))
+mtx_distances = pd.DataFrame(columns = column)
+mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
 
 
 for sample_i in train_FilteredX:
     for sample_j in train_FilteredX:   
         dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
-        mtxDistances_class_i.append(dist)
+        distances.append(dist)
         
-    df_length = len(df_)
-    df_.loc[df_length] = mtxDistances_class_i  
-    mtxDistances_class_i = []  
-        
+    df_length = len(mtx_distances)
+    mtx_distances.loc[df_length] = distances 
+    distances= []  
+vector_dist = mtx_distances.sum()
+    
         
         
         
