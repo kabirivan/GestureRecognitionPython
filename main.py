@@ -136,6 +136,33 @@ def detectMuscleActivity(emgSignal):
     return idx_Start, idx_End
 
  
+
+def findCentersClass(emg_filtered):
+    
+    distances = []
+    column = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']
+    mtx_distances = pd.DataFrame(columns = column)
+    mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
+    
+    
+    for sample_i in emg_filtered:
+        for sample_j in emg_filtered:   
+            dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
+            distances.append(dist)
+            
+        df_length = len(mtx_distances)
+        mtx_distances.loc[df_length] = distances 
+        distances= []  
+    vector_dist = mtx_distances.sum(axis=0)
+    idx = vector_dist.idxmin()
+    center_idx = emg_filtered[idx]
+    
+    return center_idx
+
+
+
+
+
        
 
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
@@ -151,10 +178,7 @@ for i in range(1,26):
     
     
 
- 
-
 train_FilteredX = []
-
 
 for i in range(0,25):
     sample = train_noGesture[i]
@@ -171,29 +195,17 @@ for i in range(0,25):
     df.iloc[idx_Start:idx_End]
     
     train_FilteredX.append(df)
+
     
-a = train_FilteredX[0]
-b = train_FilteredX[4]
-
-distances = []
-c = 0
+x = findCentersClass(train_FilteredX)     
+    
 
 
 
-column = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25']
-mtx_distances = pd.DataFrame(columns = column)
-mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
 
 
-for sample_i in train_FilteredX:
-    for sample_j in train_FilteredX:   
-        dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
-        distances.append(dist)
-        
-    df_length = len(mtx_distances)
-    mtx_distances.loc[df_length] = distances 
-    distances= []  
-vector_dist = mtx_distances.sum()
+
+
     
         
         
