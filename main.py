@@ -175,13 +175,26 @@ for i in range(0,25):
     train_FilteredX.append(df)
     
 a = train_FilteredX[0]
-b = train_FilteredX[1]
+b = train_FilteredX[4]
+
+for sample_i in train_FilteredX:
+    c = sample_i
+    
+    
+    
+    
+    
+
+
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
 
 
 
 
-path = dtw.distance_matrix_fast(a, b)
+distance, path = fastdtw(a, b, dist = euclidean)
 
+print(distance)
 
 
 
