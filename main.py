@@ -17,8 +17,9 @@ import numpy as np
 import simplespectral as sp
 import matplotlib.pyplot as plt
 import imagesc as imagesc
-from dtaidistance import dtw
 
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
 
 
 folderData = 'trainingJSON'
@@ -74,9 +75,7 @@ def preProcessEMGSegment(EMGsegment_in):
 
 
 
-def detectMuscleActivity(emgSignal):
-    
-    
+def detectMuscleActivity(emgSignal):    
     fs = 200
     minWindowLength_Segmentation =  100
     hammingWdw_Length = np.hamming(25)
@@ -177,24 +176,41 @@ for i in range(0,25):
 a = train_FilteredX[0]
 b = train_FilteredX[4]
 
+mtxDistances_class_i = []
+c = 0
+
+
+
+column = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25']
+df_ = pd.DataFrame(columns = column)
+df_ = df_.fillna(0) # with 0s rather than NaNs
+print(len(df_))
+
+
 for sample_i in train_FilteredX:
-    c = sample_i
+    for sample_j in train_FilteredX:   
+        dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
+        mtxDistances_class_i.append(dist)
+        
+    df_length = len(df_)
+    df_.loc[df_length] = mtxDistances_class_i  
+    mtxDistances_class_i = []  
+        
+        
+        
+        
+    #     dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
+    #     # print(dist)
+    #     mtxDistances_class_i.append([dist])
+    # df_ = df_.append(mtxDistances_class_i, ignore_index=True)
+    # mtxDistances_class_i = []
     
     
     
-    
-    
-
-
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
 
 
 
 
-distance, path = fastdtw(a, b, dist = euclidean)
-
-print(distance)
 
 
 
