@@ -140,7 +140,6 @@ def detectMuscleActivity(emgSignal):
  
 
 def findCentersClass(emg_filtered):
-    
     distances = []
     column = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']
     mtx_distances = pd.DataFrame(columns = column)
@@ -171,25 +170,29 @@ i = 1
     
 train_FilteredX = []
 
+x = []
 
-for i in range(1,26):
-    
-    sample = train_samples['noGesture']['sample%s' %i]['emg']
-    df = pd.DataFrame.from_dict(sample)
-    df = df.apply(preProcessEMGSegment)
-    
-    if segmentation == True:
-        df_sum  = df.sum(axis=1)
-        idx_Start, idx_End = detectMuscleActivity(df_sum)
-    else:
-        idx_Start = 0;
-        idx_End = len(df)
+for move in gestures:   
+    for i in range(1,26):     
+        sample = train_samples[move]['sample%s' %i]['emg']
+        df = pd.DataFrame.from_dict(sample)
+        df = df.apply(preProcessEMGSegment)
         
-    df.iloc[idx_Start:idx_End]   
-    train_FilteredX.append(df)
-
+        if segmentation == True:
+            df_sum  = df.sum(axis=1)
+            idx_Start, idx_End = detectMuscleActivity(df_sum)
+        else:
+            idx_Start = 0;
+            idx_End = len(df)
+            
+        df.iloc[idx_Start:idx_End]   
+        train_FilteredX.append(df)       
+    center = [1, 2, 3, 4]
+    x.append(center)
   
-x = findCentersClass(train_FilteredX)   
+#center = findCentersClass(train_FilteredX)
+
+ 
   
     
 
