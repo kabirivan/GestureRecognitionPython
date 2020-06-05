@@ -25,6 +25,8 @@ from scipy.spatial.distance import euclidean
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
 
+a = {}
+
 
 files = []
 
@@ -165,21 +167,14 @@ def findCentersClass(emg_filtered):
 
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 segmentation = False
+i = 1    
     
-for i in range(1,26):       
-    train_noGesture.append(train_samples['noGesture']['sample%s' %i]['emg'])
-    train_fist.append(train_samples['fist']['sample%s' %i]['emg'])
-    train_waveIn.append(train_samples['waveIn']['sample%s' %i]['emg'])
-    train_waveOut.append(train_samples['waveOut']['sample%s' %i]['emg'])
-    train_open.append(train_samples['open']['sample%s' %i]['emg'])
-    train_pinch .append(train_samples['pinch']['sample%s' %i]['emg'])
-    
-    
-
 train_FilteredX = []
 
-for i in range(0,25):
-    sample = train_noGesture[i]
+
+for i in range(1,26):
+    
+    sample = train_samples['noGesture']['sample%s' %i]['emg']
     df = pd.DataFrame.from_dict(sample)
     df = df.apply(preProcessEMGSegment)
     
@@ -190,15 +185,18 @@ for i in range(0,25):
         idx_Start = 0;
         idx_End = len(df)
         
-    df.iloc[idx_Start:idx_End]
-    
+    df.iloc[idx_Start:idx_End]   
     train_FilteredX.append(df)
 
-    
-x = findCentersClass(train_FilteredX)     
+  
+x = findCentersClass(train_FilteredX)   
+  
     
 
-
+# def featureExtraction(emg_filtered, centers):
+#     numTime_series = len(emg_filtered)
+#     numClusters = len(centers)
+    
 
 
 

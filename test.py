@@ -129,13 +129,21 @@ import pandas as pd
 
 # 
 
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
+# from fastdtw import fastdtw
+# from scipy.spatial.distance import euclidean
 
-x = np.array([1, 2, 3, 3, 7])
-y = np.array([1, 2, 2, 2, 2, 2, 2, 4])
+# x = np.array([1, 2, 3, 3, 7])
+# y = np.array([1, 2, 2, 2, 2, 2, 2, 4])
 
-distance, path = fastdtw(x, y, dist=euclidean)
+# distance, path = fastdtw(x, y, dist=euclidean)
 
-print(distance)
-print(path)
+# print(distance)
+# print(path)
+
+
+hand_gestures =  ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']}
+
+train_noGesture = [1,2,3,4,5,6,7,8,9] 
+
+
+
