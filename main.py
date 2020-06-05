@@ -155,11 +155,9 @@ def findCentersClass(emg_filtered):
         distances= []  
     vector_dist = mtx_distances.sum(axis=0)
     idx = vector_dist.idxmin()
-    center_idx = emg_filtered[idx]
+    center_idx = emg_filtered[int(idx)]
     
     return center_idx
-
-
 
 
 
