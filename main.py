@@ -24,6 +24,7 @@ from scipy.spatial.distance import euclidean
 
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
+#gestures = ['noGesture', 'fist']
 
 a = {}
 
@@ -42,12 +43,12 @@ with open(file_selected) as file:
 # Training Process
 train_samples = user['trainingSamples']
 
-train_noGesture = []
-train_open = []
-train_fist = []
-train_waveIn = []
-train_waveOut = []
-train_pinch =[]
+# train_noGesture = []
+# train_open = []
+# train_fist = []
+# train_waveIn = []
+# train_waveOut = []
+# train_pinch =[]
 
 
 
@@ -77,65 +78,60 @@ def preProcessEMGSegment(EMGsegment_in):
 
 
 
-def detectMuscleActivity(emgSignal):    
+def detectMuscleActivity(emg_sum):
+
     fs = 200
     minWindowLength_Segmentation =  100
     hammingWdw_Length = np.hamming(25)
     numSamples_lapBetweenWdws = 10
-    threshForSum_AlongFreqInSpec = 10
-    # Computing the spectrogram of the EMG
-    Sxx, freqs, time, im = plt.specgram(emgSignal, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws)
-    #Sxx, freqs, time, im = emgSignal.specgram(x = emgSignal, NFFT=FFT, window = numpy.hamming(25), Fs = 200, noverlap = 10)       
-    # Summing the spectrogram along the frequencies
-    sumAlongFreq = [sum(x) for x in zip(*Sxx)]
-    
+    threshForSum_AlongFreqInSpec = 0.85
 
-    
+    [s, f, t, im] = plt.specgram(emg_sum, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws, mode = 'magnitude', pad_to = 50)  
+    sumAlongFreq = [sum(x) for x in zip(*s)]
+
     greaterThanThresh = []
- 
     # Thresholding the sum sumAlongFreq
     for item in sumAlongFreq:
         if item >= threshForSum_AlongFreqInSpec:
-           greaterThanThresh.append(1)
+            greaterThanThresh.append(1)
         else:
-           greaterThanThresh.append(0)
+            greaterThanThresh.append(0)
            
     greaterThanThresh.insert(0,0)       
     greaterThanThresh.append(0)    
-    diffGreaterThanThresh = abs(np.diff(greaterThanThresh))
-    
-    if diffGreaterThanThresh[-1] == 1:
-        diffGreaterThanThresh[-2] = 1;
+    diffGreaterThanThresh = abs(np.diff(greaterThanThresh)) 
 
-    x = diffGreaterThanThresh[1:-2];
-    
+    if diffGreaterThanThresh[-1] == 1:
+        diffGreaterThanThresh[-2] = 1;      
+       
+    x = diffGreaterThanThresh[0:-1];
     findNumber = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
     idxNonZero = findNumber(1,x)
     numIdxNonZero = len(idxNonZero)
-    idx_Samples = fs*time
-    idx_Samples = np.floor(idx_Samples) 
-    
+    idx_Samples = np.floor(fs*t)
+
     if numIdxNonZero == 0:
         idx_Start = 1
-        idx_End = len(emgSignal)
+        idx_End = len(emg_sum)
     elif numIdxNonZero == 1:
-        idx_Start = idx_Samples[idxNonZero[0]]
-        idx_End = len(emgSignal)
+        idx_Start = idx_Samples[idxNonZero]
+        idx_End = len(emg_sum)
     else:
         idx_Start = idx_Samples[idxNonZero[0]]
-        idx_End = idx_Samples[idxNonZero[-2]]
-    
+        idx_End = idx_Samples[idxNonZero[-1]-1]
+
     numExtraSamples = 25
     idx_Start = max(1,idx_Start - numExtraSamples)
-    idx_End = min(len(emgSignal), idx_End + numExtraSamples)
+    idx_End = min(len(emg_sum), idx_End + numExtraSamples)
     
     if (idx_End - idx_Start) < minWindowLength_Segmentation:
         idx_Start = 1
-        idx_End = len(emgSignal)
+        idx_End = len(emg_sum)
 
 
-    
-    return idx_Start, idx_End
+    return int(idx_Start), int(idx_End)
+
+
 
  
 
@@ -165,7 +161,7 @@ def findCentersClass(emg_filtered):
        
 
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
-segmentation = False
+segmentation = True
 i = 1    
     
 train_FilteredX = []
@@ -173,7 +169,7 @@ train_FilteredX = []
 x = []
 
 for move in gestures:   
-    for i in range(1,26):     
+    for i in range(1,5):     
         sample = train_samples[move]['sample%s' %i]['emg']
         df = pd.DataFrame.from_dict(sample)
         df = df.apply(preProcessEMGSegment)
@@ -185,11 +181,46 @@ for move in gestures:
             idx_Start = 0;
             idx_End = len(df)
             
-        df.iloc[idx_Start:idx_End]   
-        train_FilteredX.append(df)       
-    center = [1, 2, 3, 4]
-    x.append(center)
-  
+        df_seg = df.iloc[idx_Start:idx_End]   
+        train_FilteredX.append(df_seg)
+        
+     center = findCentersClass(train_FilteredX)
+     x.append(center)    
+     train_FilteredX = []
+
+
+    
+    
+
+# sample = train_samples['open']['sample1']['emg']
+# df = pd.DataFrame.from_dict(sample)   
+# df = df.apply(preProcessEMGSegment) 
+# df_sum  = df.sum(axis=1)
+
+# a, b = detectMuscleActivity(df_sum)
+
+# df_seg = df.iloc[a:b]   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #center = findCentersClass(train_FilteredX)
 
  

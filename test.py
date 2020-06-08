@@ -141,9 +141,25 @@ import pandas as pd
 # print(path)
 
 
-hand_gestures =  ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']}
+# hand_gestures =  ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']}
 
-train_noGesture = [1,2,3,4,5,6,7,8,9] 
+# train_noGesture = [1,2,3,4,5,6,7,8,9] 
 
 
+
+import numpy as np
+from matplotlib import mlab
+data = range(1,1000)
+
+Fs = 8000
+tWindow = 64e-3
+NWindow = Fs*tWindow
+window = np.hamming(NWindow)
+
+NFFT = 512
+NOverlap = NWindow/2
+
+[s, f, t] = mlab.specgram(data, NFFT = NFFT, Fs = Fs, window = window, noverlap = NOverlap, mode  = 'complex')
+
+pp = abs()
 
