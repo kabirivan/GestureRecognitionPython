@@ -135,9 +135,10 @@ def detectMuscleActivity(emg_sum):
 
  
 
-def findCentersClass(emg_filtered):
+def findCentersClass(emg_filtered,sample):
     distances = []
-    column = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']
+    column = np.arange(0,sample)
+    #column = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']
     mtx_distances = pd.DataFrame(columns = column)
     mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
     
@@ -163,7 +164,7 @@ def findCentersClass(emg_filtered):
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 segmentation = True
 i = 1    
-    
+ss = 25    
 train_FilteredX = []
 
 x = []
@@ -184,22 +185,13 @@ for move in gestures:
         df_seg = df.iloc[idx_Start:idx_End]   
         train_FilteredX.append(df_seg)
         
-     center = findCentersClass(train_FilteredX)
-     x.append(center)    
-     train_FilteredX = []
+    center = findCentersClass(train_FilteredX,4)
+    x.append(center)    
+    train_FilteredX = []
 
 
     
     
-
-# sample = train_samples['open']['sample1']['emg']
-# df = pd.DataFrame.from_dict(sample)   
-# df = df.apply(preProcessEMGSegment) 
-# df_sum  = df.sum(axis=1)
-
-# a, b = detectMuscleActivity(df_sum)
-
-# df_seg = df.iloc[a:b]   
 
 
 
