@@ -16,8 +16,6 @@ from scipy import signal
 import numpy as np
 import simplespectral as sp
 import matplotlib.pyplot as plt
-import imagesc as imagesc
-
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 
@@ -133,8 +131,6 @@ def detectMuscleActivity(emg_sum):
 
 
 
- 
-
 def findCentersClass(emg_filtered,sample):
     distances = []
     column = np.arange(0,sample)
@@ -158,6 +154,26 @@ def findCentersClass(emg_filtered,sample):
     return center_idx
 
 
+def featureExtraction(emg_filtered,centers)
+
+    dist_features = []
+    
+    column = np.arange(0,len(centers))
+    dataX = pd.DataFrame(columns = column)
+    dataX = dataX.fillna(0)
+    
+    for rep in emg_filtered:
+        for middle in centers:
+            dist, dummy = fastdtw(rep, middle, dist = euclidean) 
+            dist_features.append(dist)
+        
+        dataX_length = len(dataX)
+        dataX.loc[dataX_length] = dist_features
+        dist_features = [] 
+    
+    return dataX
+
+
 
        
 
@@ -166,8 +182,9 @@ segmentation = True
 i = 1    
 ss = 25    
 train_FilteredX = []
+train_aux = []
 
-x = []
+centers = []
 
 for move in gestures:   
     for i in range(1,5):     
@@ -183,18 +200,21 @@ for move in gestures:
             idx_End = len(df)
             
         df_seg = df.iloc[idx_Start:idx_End]   
+        train_aux.append(df_seg)
         train_FilteredX.append(df_seg)
         
-    center = findCentersClass(train_FilteredX,4)
-    x.append(center)    
-    train_FilteredX = []
+    center_gesture = findCentersClass(train_aux,4)
+    centers.append(center_gesture)    
+    train_aux = []
+
+
+dataX = featureExtraction(train_FilteredX,centers)
+
 
 
     
     
-
-
-
+    
 
 
 
