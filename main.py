@@ -154,7 +154,7 @@ def findCentersClass(emg_filtered,sample):
     return center_idx
 
 
-def featureExtraction(emg_filtered,centers)
+def featureExtraction(emg_filtered, centers):
 
     dist_features = []
     
@@ -187,7 +187,7 @@ train_aux = []
 centers = []
 
 for move in gestures:   
-    for i in range(1,5):     
+    for i in range(1,26):     
         sample = train_samples[move]['sample%s' %i]['emg']
         df = pd.DataFrame.from_dict(sample)
         df = df.apply(preProcessEMGSegment)
@@ -203,12 +203,12 @@ for move in gestures:
         train_aux.append(df_seg)
         train_FilteredX.append(df_seg)
         
-    center_gesture = findCentersClass(train_aux,4)
+    center_gesture = findCentersClass(train_aux,25)
     centers.append(center_gesture)    
     train_aux = []
 
 
-dataX = featureExtraction(train_FilteredX,centers)
+dataX = featureExtraction(train_FilteredX, centers)
 
 
 
