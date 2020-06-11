@@ -212,7 +212,29 @@ dataX = featureExtraction(train_FilteredX, centers)
 
 
 
+
+
+type_Preprocessing = 'vector'
+num_examples = len(dataX)
+
+
+if type_Preprocessing == 'vector':
     
+    
+
+
+elif type_Preprocessing == 'feaure':
+
+
+elif type_Preprocessing == 'minmax':
+
+
+elif type_Preprocessing == None
+
+
+else:
+
+print('Select a valid method for pre-processing the feature vectors')     
     
     
 
