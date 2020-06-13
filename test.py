@@ -147,19 +147,29 @@ import pandas as pd
 
 
 
-import numpy as np
-from matplotlib import mlab
-data = range(1,1000)
+# import numpy as np
+# from matplotlib import mlab
+# data = range(1,1000)
 
-Fs = 8000
-tWindow = 64e-3
-NWindow = Fs*tWindow
-window = np.hamming(NWindow)
+# Fs = 8000
+# tWindow = 64e-3
+# NWindow = Fs*tWindow
+# window = np.hamming(NWindow)
 
-NFFT = 512
-NOverlap = NWindow/2
+# NFFT = 512
+# NOverlap = NWindow/2
 
-[s, f, t] = mlab.specgram(data, NFFT = NFFT, Fs = Fs, window = window, noverlap = NOverlap, mode  = 'complex')
+# [s, f, t] = mlab.specgram(data, NFFT = NFFT, Fs = Fs, window = window, noverlap = NOverlap, mode  = 'complex')
 
-pp = abs()
+
+
+
+
+from sklearn.manifold import TSNE
+import time
+time_start = time.time()
+RS = 123
+fashion_tsne = TSNE(random_state=RS).fit_transform(x_subset)
+
+print('t-SNE done! Time elapsed: {} seconds'.format(time.time()-time_start))
 

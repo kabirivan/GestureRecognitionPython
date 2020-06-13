@@ -5,7 +5,7 @@ Created on Sun May 31 21:06:52 2020
 
 @author: aguasharo
 """
-
+from __future__ import print_function
 
 import json
 import os
@@ -18,6 +18,10 @@ import simplespectral as sp
 import matplotlib.pyplot as plt
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
+from sklearn.manifold import TSNE
+import seaborn as sns
+
+import time
 
 
 folderData = 'trainingJSON'
@@ -174,8 +178,18 @@ def featureExtraction(emg_filtered, centers):
     return dataX
 
 
+def preProcessFeautureVector(dataX_in):
+    
+    dataX_mean = dataX_in.mean(axis = 1)
+    dataX_std = dataX_in.std(axis = 1)   
+    dataX_mean6 =  pd.concat([dataX_mean]*len(gestures), axis = 1)
+    dataX_std6 =  pd.concat([dataX_std]*len(gestures), axis = 1)
+    
+    dataX6 = (dataX_in - dataX_mean6)/dataX_std6
+    
+    return dataX6
 
-       
+
 
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 segmentation = True
@@ -211,37 +225,29 @@ for move in gestures:
 dataX = featureExtraction(train_FilteredX, centers)
 
 
+dataX6 = preProcessFeautureVector(dataX)
 
 
-
-type_Preprocessing = 'vector'
-num_examples = len(dataX)
-
-
-if type_Preprocessing == 'vector':
-    
-    
+   
+time_start = time.time()
+tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
+tsne_results = tsne.fit_transform(dataX6)
+print('t-SNE done! Time elapsed: {} seconds'.format(time.time()-time_start))
 
 
-elif type_Preprocessing == 'feaure':
+dataX6['tsne-2d-one'] =tsne_results[:,0]
+dataX6['tsne-2d-two']= tsne_results[:,1]
+dataX6['y'] = dataY
 
-
-elif type_Preprocessing == 'minmax':
-
-
-elif type_Preprocessing == None
-
-
-else:
-
-print('Select a valid method for pre-processing the feature vectors')     
-    
-    
-
-
-
-
-
+plt.figure(figsize=(10,6))
+sns.scatterplot(
+    x="tsne-2d-one", y="tsne-2d-two",
+    hue="y",
+    palette=sns.color_palette("Set2", n_colors=6, desat=1),
+    data=dataX6,
+    legend="full",
+    alpha=1
+)
 
 
 
