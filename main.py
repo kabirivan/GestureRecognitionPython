@@ -252,7 +252,25 @@ sns.scatterplot(
 
 
 
+dataSave = preProcessFeautureVector(dataX)
 
+dataSave.to_csv('csv_test.csv')
+
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+
+
+
+classifier = Sequential()
+
+classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = None, input_dim = 10))
+classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
+classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softplus'))
+
+classifier.compile(optimizer = 'sgd', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+
+classifier.fit(X_train, y_train, batch_size = 10, epochs = 10)
 
 
 
