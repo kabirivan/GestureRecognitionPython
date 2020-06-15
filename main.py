@@ -24,6 +24,14 @@ import seaborn as sns
 import time
 
 
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+from sklearn.preprocessing import LabelEncoder
+from keras.utils import np_utils
+
+
+
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
 #gestures = ['noGesture', 'fist']
@@ -45,12 +53,6 @@ with open(file_selected) as file:
 # Training Process
 train_samples = user['trainingSamples']
 
-# train_noGesture = []
-# train_open = []
-# train_fist = []
-# train_waveIn = []
-# train_waveOut = []
-# train_pinch =[]
 
 
 
@@ -183,18 +185,27 @@ def preProcessFeautureVector(dataX_in):
     dataX_mean = dataX_in.mean(axis = 1)
     dataX_std = dataX_in.std(axis = 1)   
     dataX_mean6 =  pd.concat([dataX_mean]*len(gestures), axis = 1)
-    dataX_std6 =  pd.concat([dataX_std]*len(gestures), axis = 1)
-    
+    dataX_std6 =  pd.concat([dataX_std]*len(gestures), axis = 1)   
     dataX6 = (dataX_in - dataX_mean6)/dataX_std6
     
     return dataX6
 
 
+def trainFeedForwardNetwork(X_train,y_train):
+    
+    classifier = Sequential()
+    classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = None, input_dim = 6))
+    classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
+    classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
+    classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+    classifier.fit(X_train, y_train, batch_size = 20, epochs = 500, verbose = 0)
+    
+    return classifier
 
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
+
+
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(0,len(gestures))))
 segmentation = True
-i = 1    
-ss = 25    
 train_FilteredX = []
 train_aux = []
 
@@ -223,92 +234,117 @@ for move in gestures:
 
 
 dataX = featureExtraction(train_FilteredX, centers)
-
-
 dataX6 = preProcessFeautureVector(dataX)
 
 
    
-time_start = time.time()
-tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
-tsne_results = tsne.fit_transform(dataX6)
-print('t-SNE done! Time elapsed: {} seconds'.format(time.time()-time_start))
+# time_start = time.time()
+# tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
+# tsne_results = tsne.fit_transform(dataX6)
+# print('t-SNE done! Time elapsed: {} seconds'.format(time.time()-time_start))
 
 
-dataX6['tsne-2d-one'] =tsne_results[:,0]
-dataX6['tsne-2d-two']= tsne_results[:,1]
-dataX6['y'] = dataY
+# dataX6['tsne-2d-one'] =tsne_results[:,0]
+# dataX6['tsne-2d-two']= tsne_results[:,1]
+# dataX6['y'] = dataY
 
-plt.figure(figsize=(10,6))
-sns.scatterplot(
-    x="tsne-2d-one", y="tsne-2d-two",
-    hue="y",
-    palette=sns.color_palette("Set2", n_colors=6, desat=1),
-    data=dataX6,
-    legend="full",
-    alpha=1
-)
-
-
+# plt.figure(figsize=(10,6))
+# sns.scatterplot(
+#     x="tsne-2d-one", y="tsne-2d-two",
+#     hue="y",
+#     palette=sns.color_palette("Set2", n_colors=6, desat=1),
+#     data=dataX6,
+#     legend="full",
+#     alpha=1
+# )
 
 
-dataSave = preProcessFeautureVector(dataX)
-
-dataSave.to_csv('csv_test.csv')
-
-import keras
-from keras.models import Sequential
-from keras.layers import Dense
-
-
-
-classifier = Sequential()
-
-classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = None, input_dim = 10))
-classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
-classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softplus'))
-
-classifier.compile(optimizer = 'sgd', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-
-classifier.fit(X_train, y_train, batch_size = 10, epochs = 10)
+X_train = dataX6
+y_train = np.array(dataY)
+encoder = LabelEncoder()
+encoder.fit(y_train)
+encoded_Y = encoder.transform(y_train)
+dummy_y = np_utils.to_categorical(encoded_Y)
+estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 
 
 
+test_samples = user['testingSamples']
+window_length = 500
+stride_length = 10
+
+predLabel_seq = []
+vecTime = []
+timeSeq = []
 
 
-
-#center = findCentersClass(train_FilteredX)
-
- 
-  
+sample = test_samples['fist']['sample16']['emg']
+df = pd.DataFrame.from_dict(sample)
+emg_length = len(df)
+count = 0
+#num_classifications = np.floor((emg_length-window_lenght)/stride_lenght)
+while True:
+    start_point = stride_length*count + 1
+    end_point = start_point + window_length - 1
     
-
-# def featureExtraction(emg_filtered, centers):
-#     numTime_series = len(emg_filtered)
-#     numClusters = len(centers)
+    if end_point > emg_length:
+        break
     
-
-
-
-
-
+    tStart = time.time()
+    window_emg = df.iloc[start_point:end_point]   
+    filt_window_emg = window_emg.apply(preProcessEMGSegment)
+    window_sum  = filt_window_emg.sum(axis=1)
+    idx_start, idx_end = detectMuscleActivity(window_sum)
+    t_acq = time.time()-tStart
     
+    if idx_start != 1 & idx_end != len(window_emg):
+        
+        tStart = time.time()
+        filt_window_emg = window_emg.apply(preProcessEMGSegment)
+        window_emg = filt_window_emg.loc[idx_start:idx_end]
+        
+        t_filt = time.time() - tStart
+        
+        tStart = time.time()
+        featVector = featureExtraction([window_emg], centers)
+        featVectorP = preProcessFeautureVector(featVector)
+        t_featExtra =  time.time() - tStart
+        
+        tStart = time.time()
+        x = estimator.predict(featVectorP).tolist()
+        probNN = x[0]
+        max_probNN = max(probNN)
+        predicted_labelNN = probNN.index(max_probNN)
+        t_classiNN = time.time() - tStart
+        
+        tStart = time.time()
+        if max_probNN <= 0.5:
+            predicted_labelNN = 0
+        t_threshNN = time.time() - tStart 
+        
+       
+    else:
+        
+        t_filt = 0
+        t_featExtra = 0
+        t_classiNN = 0
+        t_threshNN = 0
+        predicted_labelNN = 0
+        print('no')
         
         
+    count = count + 1
+    predLabel_seq.append(predicted_labelNN);
+    vecTime.append(start_point)
+    timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
         
-    #     dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
-    #     # print(dist)
-    #     mtxDistances_class_i.append([dist])
-    # df_ = df_.append(mtxDistances_class_i, ignore_index=True)
-    # mtxDistances_class_i = []
-    
-    
-    
+        
+       
 
-
-
+        
+        
 
 
 
