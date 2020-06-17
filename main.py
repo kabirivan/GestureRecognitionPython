@@ -287,6 +287,42 @@ def unique(list1):
 
 
 
+def posProcessLabels(predictedSeq)
+
+    predictedSeq = v3
+    predictedSeq[0] = 1
+    postProcessedLabels = predictedSeq
+    finalLabel = []
+    
+    for i in range(1,len(predictedSeq)):
+        if predictedSeq[i] == predictedSeq[i-1]:
+            cond = 1
+        else:    
+            cond = 0
+            
+        postProcessedLabels[i] =  (1 * cond) + (predictedSeq[i]* (1 - cond))  
+            
+    uniqueLabels = unique(postProcessedLabels)
+    
+    an_iterator = filter(lambda number: number != 1, uniqueLabels)
+    uniqueLabelsWithoutRest = list(an_iterator)
+       
+    if not uniqueLabelsWithoutRest:
+        
+        finalLabel[0] = 1
+        
+    else:
+        
+        if len(uniqueLabelsWithoutRest) > 1:
+            finalLabel = uniqueLabelsWithoutRest[0]
+        else:
+            finalLabel = uniqueLabelsWithoutRest
+        
+    return finalLabel
+
+
+
+
 
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 10) for x in range(1,len(gestures)+1)))
 segmentation = True
@@ -362,40 +398,9 @@ df_test = pd.DataFrame.from_dict(sample)
 v1, v2, v3 = classifyEMG_SegmentationNN(df_test, centers, estimator)
 
 
+predicted_label = posProcessLabels(v3)
 
 
-def posProcessLabels(predictedSeq)
-
-    predictedSeq = v3
-    predictedSeq[0] = 1
-    postProcessedLabels = predictedSeq
-    finalLabel = []
-    
-    for i in range(1,len(predictedSeq)):
-        if predictedSeq[i] == predictedSeq[i-1]:
-            cond = 1
-        else:    
-            cond = 0
-            
-        postProcessedLabels[i] =  (1 * cond) + (predictedSeq[i]* (1 - cond))  
-            
-    uniqueLabels = unique(postProcessedLabels)
-    
-    an_iterator = filter(lambda number: number != 1, uniqueLabels)
-    uniqueLabelsWithoutRest = list(an_iterator)
-       
-    if not uniqueLabelsWithoutRest:
-        
-        finalLabel[0] = 1
-        
-    else:
-        
-        if len(uniqueLabelsWithoutRest) > 1:
-            finalLabel = uniqueLabelsWithoutRest[0]
-        else:
-            finalLabel = uniqueLabelsWithoutRest
-        
-    return finalLabel
 
 
 
