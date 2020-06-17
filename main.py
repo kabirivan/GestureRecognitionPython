@@ -204,6 +204,79 @@ def trainFeedForwardNetwork(X_train,y_train):
 
 
 
+
+
+def classifyEMG_SegmentationNN(dataX_test, centers, model):
+    
+    window_length = 500
+    stride_length = 10
+    emg_length = len(dataX_test)
+    predLabel_seq = []
+    vecTime = []
+    timeSeq = []
+    
+    
+    count = 0
+    while True:
+        start_point = stride_length*count + 1
+        end_point = start_point + window_length - 1
+        
+        if end_point > emg_length:
+            break
+        
+        tStart = time.time()
+        window_emg = dataX_test.iloc[start_point:end_point]   
+        filt_window_emg = window_emg.apply(preProcessEMGSegment)
+        window_sum  = filt_window_emg.sum(axis=1)
+        idx_start, idx_end = detectMuscleActivity(window_sum)
+        t_acq = time.time()-tStart
+        
+        if idx_start != 1 & idx_end != len(window_emg):
+            
+            tStart = time.time()
+            filt_window_emg = window_emg.apply(preProcessEMGSegment)
+            window_emg = filt_window_emg.loc[idx_start:idx_end]
+            
+            t_filt = time.time() - tStart
+            
+            tStart = time.time()
+            featVector = featureExtraction([window_emg], centers)
+            featVectorP = preProcessFeautureVector(featVector)
+            t_featExtra =  time.time() - tStart
+            
+            tStart = time.time()
+            x = model.predict(featVectorP).tolist()
+            probNN = x[0]
+            max_probNN = max(probNN)
+            predicted_labelNN = probNN.index(max_probNN)
+            t_classiNN = time.time() - tStart
+            
+            tStart = time.time()
+            if max_probNN <= 0.5:
+                predicted_labelNN = 0
+            t_threshNN = time.time() - tStart 
+            
+           
+        else:
+            
+            t_filt = 0
+            t_featExtra = 0
+            t_classiNN = 0
+            t_threshNN = 0
+            predicted_labelNN = 0
+            print('no')
+            
+            
+        count = count + 1
+        predLabel_seq.append(predicted_labelNN);
+        vecTime.append(start_point)
+        timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
+        
+        
+    return predLabel_seq, vecTime, timeSeq   
+
+
+
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 5) for x in range(0,len(gestures))))
 segmentation = True
 train_FilteredX = []
@@ -272,76 +345,16 @@ estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 test_samples = user['testingSamples']
-window_length = 500
-stride_length = 10
-
-predLabel_seq = []
-vecTime = []
-timeSeq = []
+sample = test_samples['fist']['sample5']['emg']
+df_test = pd.DataFrame.from_dict(sample)
 
 
-sample = test_samples['fist']['sample11']['emg']
-df = pd.DataFrame.from_dict(sample)
-emg_length = len(df)
-count = 0
-#num_classifications = np.floor((emg_length-window_lenght)/stride_lenght)
-while True:
-    start_point = stride_length*count + 1
-    end_point = start_point + window_length - 1
-    
-    if end_point > emg_length:
-        break
-    
-    tStart = time.time()
-    window_emg = df.iloc[start_point:end_point]   
-    filt_window_emg = window_emg.apply(preProcessEMGSegment)
-    window_sum  = filt_window_emg.sum(axis=1)
-    idx_start, idx_end = detectMuscleActivity(window_sum)
-    t_acq = time.time()-tStart
-    
-    if idx_start != 1 & idx_end != len(window_emg):
-        
-        tStart = time.time()
-        filt_window_emg = window_emg.apply(preProcessEMGSegment)
-        window_emg = filt_window_emg.loc[idx_start:idx_end]
-        
-        t_filt = time.time() - tStart
-        
-        tStart = time.time()
-        featVector = featureExtraction([window_emg], centers)
-        featVectorP = preProcessFeautureVector(featVector)
-        t_featExtra =  time.time() - tStart
-        
-        tStart = time.time()
-        x = estimator.predict(featVectorP).tolist()
-        probNN = x[0]
-        max_probNN = max(probNN)
-        predicted_labelNN = probNN.index(max_probNN)
-        t_classiNN = time.time() - tStart
-        
-        tStart = time.time()
-        if max_probNN <= 0.5:
-            predicted_labelNN = 0
-        t_threshNN = time.time() - tStart 
-        
-       
-    else:
-        
-        t_filt = 0
-        t_featExtra = 0
-        t_classiNN = 0
-        t_threshNN = 0
-        predicted_labelNN = 0
-        print('no')
-        
-        
-    count = count + 1
-    predLabel_seq.append(predicted_labelNN);
-    vecTime.append(start_point)
-    timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
-        
-        
-       
+v1, v2, v3 = classifyEMG_SegmentationNN(df_test, centers, estimator)
+
+
+
+
+
 
         
         
