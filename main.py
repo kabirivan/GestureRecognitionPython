@@ -198,7 +198,7 @@ def trainFeedForwardNetwork(X_train,y_train):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 20, epochs = 500, verbose = 0)
+    classifier.fit(X_train, y_train, batch_size = 10, epochs = 1000, verbose = 0)
     
     return classifier
 
@@ -255,7 +255,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             if max_probNN <= 0.5:
                 predicted_labelNN = 0
             t_threshNN = time.time() - tStart 
-            
+            print(predicted_labelNN)
            
         else:
             
@@ -268,12 +268,17 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             
             
         count = count + 1
-        predLabel_seq.append(predicted_labelNN);
+        predLabel_seq.append(predicted_labelNN)
         vecTime.append(start_point)
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
         
         
-    return predLabel_seq, vecTime, timeSeq   
+    return vecTime, timeSeq, predLabel_seq   
+
+
+
+
+
 
 
 
@@ -343,9 +348,8 @@ estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 
-
 test_samples = user['testingSamples']
-sample = test_samples['fist']['sample5']['emg']
+sample = test_samples['fist']['sample10']['emg']
 df_test = pd.DataFrame.from_dict(sample)
 
 
