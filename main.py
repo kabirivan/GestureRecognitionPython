@@ -287,7 +287,7 @@ def unique(list1):
 
 
 
-def posProcessLabels(predictedSeq)
+def posProcessLabels(predictedSeq):
 
     predictedSeq = v3
     predictedSeq[0] = 1
@@ -401,7 +401,7 @@ v1, v2, v3 = classifyEMG_SegmentationNN(df_test, centers, estimator)
 predicted_label = posProcessLabels(v3)
 
 
-
+print(predicted_label)
 
 
 
