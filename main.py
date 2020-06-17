@@ -264,7 +264,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_classiNN = 0
             t_threshNN = 0
             predicted_labelNN = 1
-            print('no')
+            print('0')
             
             
         count = count + 1
