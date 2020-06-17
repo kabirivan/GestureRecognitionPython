@@ -264,7 +264,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_classiNN = 0
             t_threshNN = 0
             predicted_labelNN = 1
-            print('0')
+            print('1')
             
             
         count = count + 1
@@ -277,7 +277,13 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
 
 
 
-
+def unique(list1): 
+    # insert the list to the set 
+    list_set = set(list1) 
+    # convert the set to the list 
+    unique_list = (list(list_set)) 
+    
+    return unique_list 
 
 
 
@@ -349,7 +355,7 @@ estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 test_samples = user['testingSamples']
-sample = test_samples['waveOut']['sample2']['emg']
+sample = test_samples['waveOut']['sample1']['emg']
 df_test = pd.DataFrame.from_dict(sample)
 
 
@@ -358,16 +364,39 @@ v1, v2, v3 = classifyEMG_SegmentationNN(df_test, centers, estimator)
 
 
 
-# predictions = v3
-# predictions[0] = 0
-# postProcessedLabels = predictions
+def posProcessLabels(predictedSeq)
 
-# for i in range(1,len(predictions)):
-#     if predictions[i] == predictions[i-1]:
-#         cond = 1
-#     postProcessedLabels[i] =     
+    predictedSeq = v3
+    predictedSeq[0] = 1
+    postProcessedLabels = predictedSeq
+    finalLabel = []
+    
+    for i in range(1,len(predictedSeq)):
+        if predictedSeq[i] == predictedSeq[i-1]:
+            cond = 1
+        else:    
+            cond = 0
+            
+        postProcessedLabels[i] =  (1 * cond) + (predictedSeq[i]* (1 - cond))  
+            
+    uniqueLabels = unique(postProcessedLabels)
+    
+    an_iterator = filter(lambda number: number != 1, uniqueLabels)
+    uniqueLabelsWithoutRest = list(an_iterator)
+       
+    if not uniqueLabelsWithoutRest:
         
+        finalLabel[0] = 1
         
+    else:
+        
+        if len(uniqueLabelsWithoutRest) > 1:
+            finalLabel = uniqueLabelsWithoutRest[0]
+        else:
+            finalLabel = uniqueLabelsWithoutRest
+        
+    return finalLabel
+
 
 
 
