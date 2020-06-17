@@ -204,7 +204,7 @@ def trainFeedForwardNetwork(X_train,y_train):
 
 
 
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(0,len(gestures))))
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 5) for x in range(0,len(gestures))))
 segmentation = True
 train_FilteredX = []
 train_aux = []
@@ -212,7 +212,7 @@ train_aux = []
 centers = []
 
 for move in gestures:   
-    for i in range(1,26):     
+    for i in range(1,6):     
         sample = train_samples[move]['sample%s' %i]['emg']
         df = pd.DataFrame.from_dict(sample)
         df = df.apply(preProcessEMGSegment)
@@ -228,7 +228,7 @@ for move in gestures:
         train_aux.append(df_seg)
         train_FilteredX.append(df_seg)
         
-    center_gesture = findCentersClass(train_aux,25)
+    center_gesture = findCentersClass(train_aux,5)
     centers.append(center_gesture)    
     train_aux = []
 
@@ -280,7 +280,7 @@ vecTime = []
 timeSeq = []
 
 
-sample = test_samples['fist']['sample16']['emg']
+sample = test_samples['fist']['sample11']['emg']
 df = pd.DataFrame.from_dict(sample)
 emg_length = len(df)
 count = 0
