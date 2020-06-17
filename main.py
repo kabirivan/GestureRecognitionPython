@@ -198,7 +198,7 @@ def trainFeedForwardNetwork(X_train,y_train):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 10, epochs = 1000, verbose = 0)
+    classifier.fit(X_train, y_train, batch_size = 20, epochs = 1200, verbose = 0)
     
     return classifier
 
@@ -231,7 +231,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         idx_start, idx_end = detectMuscleActivity(window_sum)
         t_acq = time.time()-tStart
         
-        if idx_start != 1 & idx_end != len(window_emg):
+        if idx_start != 1 & idx_end != len(window_emg) & (idx_end - idx_start) > 75:
             
             tStart = time.time()
             filt_window_emg = window_emg.apply(preProcessEMGSegment)
@@ -248,12 +248,12 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             x = model.predict(featVectorP).tolist()
             probNN = x[0]
             max_probNN = max(probNN)
-            predicted_labelNN = probNN.index(max_probNN)
+            predicted_labelNN = probNN.index(max_probNN) + 1
             t_classiNN = time.time() - tStart
             
             tStart = time.time()
             if max_probNN <= 0.5:
-                predicted_labelNN = 0
+                predicted_labelNN = 1
             t_threshNN = time.time() - tStart 
             print(predicted_labelNN)
            
@@ -263,7 +263,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_featExtra = 0
             t_classiNN = 0
             t_threshNN = 0
-            predicted_labelNN = 0
+            predicted_labelNN = 1
             print('no')
             
             
@@ -282,7 +282,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
 
 
 
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 5) for x in range(0,len(gestures))))
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 10) for x in range(1,len(gestures)+1)))
 segmentation = True
 train_FilteredX = []
 train_aux = []
@@ -290,7 +290,7 @@ train_aux = []
 centers = []
 
 for move in gestures:   
-    for i in range(1,6):     
+    for i in range(1,11):     
         sample = train_samples[move]['sample%s' %i]['emg']
         df = pd.DataFrame.from_dict(sample)
         df = df.apply(preProcessEMGSegment)
@@ -306,7 +306,7 @@ for move in gestures:
         train_aux.append(df_seg)
         train_FilteredX.append(df_seg)
         
-    center_gesture = findCentersClass(train_aux,5)
+    center_gesture = findCentersClass(train_aux,10)
     centers.append(center_gesture)    
     train_aux = []
 
@@ -349,7 +349,7 @@ estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 test_samples = user['testingSamples']
-sample = test_samples['fist']['sample10']['emg']
+sample = test_samples['waveOut']['sample2']['emg']
 df_test = pd.DataFrame.from_dict(sample)
 
 
@@ -358,8 +358,14 @@ v1, v2, v3 = classifyEMG_SegmentationNN(df_test, centers, estimator)
 
 
 
+# predictions = v3
+# predictions[0] = 0
+# postProcessedLabels = predictions
 
-
+# for i in range(1,len(predictions)):
+#     if predictions[i] == predictions[i-1]:
+#         cond = 1
+#     postProcessedLabels[i] =     
         
         
 
