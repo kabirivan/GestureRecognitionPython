@@ -198,7 +198,7 @@ def trainFeedForwardNetwork(X_train,y_train):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 20, epochs = 1200, verbose = 0)
+    classifier.fit(X_train, y_train, batch_size = 25, epochs = 1500, verbose = 0)
     
     return classifier
 
@@ -231,7 +231,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         idx_start, idx_end = detectMuscleActivity(window_sum)
         t_acq = time.time()-tStart
         
-        if idx_start != 1 & idx_end != len(window_emg) & (idx_end - idx_start) > 75:
+        if idx_start != 1 & idx_end != len(window_emg) & (idx_end-idx_start) > 75:
             
             tStart = time.time()
             filt_window_emg = window_emg.apply(preProcessEMGSegment)
@@ -287,44 +287,8 @@ def unique(list1):
 
 
 
-def posProcessLabels(predictedSeq):
 
-    predictedSeq = v3
-    predictedSeq[0] = 1
-    postProcessedLabels = predictedSeq
-    finalLabel = []
-    
-    for i in range(1,len(predictedSeq)):
-        if predictedSeq[i] == predictedSeq[i-1]:
-            cond = 1
-        else:    
-            cond = 0
-            
-        postProcessedLabels[i] =  (1 * cond) + (predictedSeq[i]* (1 - cond))  
-            
-    uniqueLabels = unique(postProcessedLabels)
-    
-    an_iterator = filter(lambda number: number != 1, uniqueLabels)
-    uniqueLabelsWithoutRest = list(an_iterator)
-       
-    if not uniqueLabelsWithoutRest:
-        
-        finalLabel[0] = 1
-        
-    else:
-        
-        if len(uniqueLabelsWithoutRest) > 1:
-            finalLabel = uniqueLabelsWithoutRest[0]
-        else:
-            finalLabel = uniqueLabelsWithoutRest
-        
-    return finalLabel
-
-
-
-
-
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 10) for x in range(1,len(gestures)+1)))
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 segmentation = True
 train_FilteredX = []
 train_aux = []
@@ -332,7 +296,7 @@ train_aux = []
 centers = []
 
 for move in gestures:   
-    for i in range(1,11):     
+    for i in range(1,26):     
         sample = train_samples[move]['sample%s' %i]['emg']
         df = pd.DataFrame.from_dict(sample)
         df = df.apply(preProcessEMGSegment)
@@ -348,7 +312,7 @@ for move in gestures:
         train_aux.append(df_seg)
         train_FilteredX.append(df_seg)
         
-    center_gesture = findCentersClass(train_aux,10)
+    center_gesture = findCentersClass(train_aux,25)
     centers.append(center_gesture)    
     train_aux = []
 
@@ -391,19 +355,48 @@ estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 test_samples = user['testingSamples']
-sample = test_samples['waveOut']['sample1']['emg']
+sample = test_samples['open']['sample15']['emg']
 df_test = pd.DataFrame.from_dict(sample)
 
 
 v1, v2, v3 = classifyEMG_SegmentationNN(df_test, centers, estimator)
 
 
-predicted_label = posProcessLabels(v3)
 
 
-print(predicted_label)
+predictions = v3
+predictions[0] = 1
+postProcessedLabels = predictions
+finalLabel = []
 
+for i in range(1,len(predictions)):
+    if predictions[i] == predictions[i-1]:
+        cond = 1
+    else:    
+        cond = 0
+        
+    postProcessedLabels[i] =  (1 * cond) + (predictions[i]* (1 - cond))  
+        
+uniqueLabels = unique(postProcessedLabels)
 
+an_iterator = filter(lambda number: number != 1, uniqueLabels)
+uniqueLabelsWithoutRest = list(an_iterator)
+   
+if not uniqueLabelsWithoutRest:
+    
+    finalLabel = 1
+    
+else:
+    
+    if len(uniqueLabelsWithoutRest) > 1:
+        finalLabel = uniqueLabelsWithoutRest[0]
+    else:
+        finalLabel = uniqueLabelsWithoutRest
+        
+    
+
+print
+print(finalLabel)
 
 
 
