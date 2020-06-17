@@ -287,6 +287,44 @@ def unique(list1):
 
 
 
+def posProcessLabels(predictions):
+    
+    predictions[0] = 1
+    postProcessedLabels = predictions
+    finalLabel = []
+    
+    
+    for i in range(1,len(predictions)):
+        
+        if predictions[i] == predictions[i-1]:
+            cond = 1
+        else:    
+            cond = 0
+            
+        postProcessedLabels[i] =  (1 * cond) + (predictions[i]* (1 - cond))  
+            
+    uniqueLabels = unique(postProcessedLabels)
+    
+    an_iterator = filter(lambda number: number != 1, uniqueLabels)
+    uniqueLabelsWithoutRest = list(an_iterator)
+       
+    if not uniqueLabelsWithoutRest:
+        
+        finalLabel = 1
+        
+    else:
+        
+        if len(uniqueLabelsWithoutRest) > 1:
+            finalLabel = uniqueLabelsWithoutRest[0]
+        else:
+            finalLabel = uniqueLabelsWithoutRest
+                   
+    
+    return finalLabel
+
+
+
+
 
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 segmentation = True
@@ -359,44 +397,12 @@ sample = test_samples['open']['sample15']['emg']
 df_test = pd.DataFrame.from_dict(sample)
 
 
-v1, v2, v3 = classifyEMG_SegmentationNN(df_test, centers, estimator)
+vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
 
 
 
+predicted_label = posProcessLabels(prediq_seq)
 
-predictions = v3
-predictions[0] = 1
-postProcessedLabels = predictions
-finalLabel = []
-
-for i in range(1,len(predictions)):
-    if predictions[i] == predictions[i-1]:
-        cond = 1
-    else:    
-        cond = 0
-        
-    postProcessedLabels[i] =  (1 * cond) + (predictions[i]* (1 - cond))  
-        
-uniqueLabels = unique(postProcessedLabels)
-
-an_iterator = filter(lambda number: number != 1, uniqueLabels)
-uniqueLabelsWithoutRest = list(an_iterator)
-   
-if not uniqueLabelsWithoutRest:
-    
-    finalLabel = 1
-    
-else:
-    
-    if len(uniqueLabelsWithoutRest) > 1:
-        finalLabel = uniqueLabelsWithoutRest[0]
-    else:
-        finalLabel = uniqueLabelsWithoutRest
-        
-    
-
-print
-print(finalLabel)
 
 
 
