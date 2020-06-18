@@ -30,8 +30,18 @@ from keras.layers import Dense
 from sklearn.preprocessing import LabelEncoder
 from keras.utils import np_utils
 
-from numba import jit, cuda 
-from numba import vectorize
+
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+from matplotlib.collections import QuadMesh
+
+
+
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+
+
 
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
@@ -59,8 +69,8 @@ train_samples = user['trainingSamples']
 
 def butter_lowpass_filter(data, fs, order):
     # Get the filter coefficients 
-    b, a = signal.butter(order, fs, 'low', analog=False)
-    y = signal.filtfilt(b, a, data)
+    b, a = signal.butter(order, fs, 'low', analog = False)
+    y = signal.filtfilt(b, a, data, axis = 0)
     return y
 
 
@@ -231,13 +241,14 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         if idx_start != 1 & idx_end != len(window_emg):
             
             tStart = time.time()
-            window_emg = filt_window_emg.loc[idx_start:idx_end]
             
+            window_emg = window_emg.loc[idx_start:idx_end]
+            filt_window_emg = window_emg.apply(preProcessEMGSegment)
             
             t_filt = time.time() - tStart
             
             tStart = time.time()
-            featVector = featureExtraction([window_emg], centers)
+            featVector = featureExtraction([filt_window_emg], centers)
             featVectorP = preProcessFeautureVector(featVector)
             t_featExtra =  time.time() - tStart
             
@@ -323,7 +334,7 @@ def posProcessLabels(predictions):
 
 
 
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 5) for x in range(1,len(gestures)+1)))
 segmentation = True
 train_FilteredX = []
 train_aux = []
@@ -331,7 +342,7 @@ train_aux = []
 centers = []
 
 for move in gestures:   
-    for i in range(1,26):     
+    for i in range(1,6):     
         sample = train_samples[move]['sample%s' %i]['emg']
         df = pd.DataFrame.from_dict(sample)
         df = df.apply(preProcessEMGSegment)
@@ -347,7 +358,7 @@ for move in gestures:
         train_aux.append(df_seg)
         train_FilteredX.append(df_seg)
         
-    center_gesture = findCentersClass(train_aux,25)
+    center_gesture = findCentersClass(train_aux,5)
     centers.append(center_gesture)    
     train_aux = []
 
@@ -400,57 +411,54 @@ test_FilteredX = []
 
 test_samples = user['testingSamples']
 
-for move in gestures:   
-    for i in range(1,26):
-        sample = test_samples[move]['sample%s' %i]['emg']
-        df_test = pd.DataFrame.from_dict(sample)
-        df = df_test.apply(preProcessEMGSegment)
+# for move in gestures:   
+#     for i in range(1,6):
+#         sample = test_samples[move]['sample%s' %i]['emg']
+#         df_test = pd.DataFrame.from_dict(sample)
+#         # df = df_test.apply(preProcessEMGSegment)
         
-        if segmentation == True:
-            df_sum  = df.sum(axis=1)
-            idx_Start, idx_End = detectMuscleActivity(df_sum)
-        else:
-            idx_Start = 0;
-            idx_End = len(df)
+#         # if segmentation == True:
+#         #     df_sum  = df.sum(axis=1)
+#         #     idx_Start, idx_End = detectMuscleActivity(df_sum)
+#         # else:
+#         #     idx_Start = 0;
+#         #     idx_End = len(df)
             
-        df_seg = df.iloc[idx_Start:idx_End]   
-        test_FilteredX.append(df_seg)
+#         # df_seg = df.iloc[idx_Start:idx_End]   
+#         # test_FilteredX.append(df_seg)
     
-        # vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
+#         vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
     
-        # predicted_label = posProcessLabels(prediq_seq)
+#         predicted_label = posProcessLabels(prediq_seq)
         
-        # print(predicted_label)
-        # responses_label.append(predicted_label)
-        # predict_vector.append(prediq_seq) 
+#         print(predicted_label)
+#         responses_label.append(predicted_label)
+#         predict_vector.append(prediq_seq) 
+        
+        
+        
     
-X_te = featureExtraction(test_FilteredX, centers) 
-X_test = preProcessFeautureVector(X_te)
+# X_te = featureExtraction(test_FilteredX, centers) 
+# X_test = preProcessFeautureVector(X_te)
 
-results = estimator.predict(X_test).tolist()   
+# results = estimator.predict(X_test).tolist()   
 
-res = []
+# res = []
 
-for item in results: 
-    max_probNN = max(item)
-    predicted_labelNN = item.index(max_probNN) + 1
-    res.append(predicted_labelNN)
-
-
+# for item in results: 
+#     max_probNN = max(item)
+#     predicted_labelNN = item.index(max_probNN) + 1
+#     res.append(predicted_labelNN)
 
 
+# cm = confusion_matrix(dataY, res)
+# f = sns.heatmap(cm, annot=True)
 
 
+# score =  accuracy_score(dataY, res) 
 
-from sklearn.metrics import confusion_matrix
-cm = confusion_matrix(dataY, res)
-f = sns.heatmap(cm, annot=True)
-
-from sklearn.metrics import accuracy_score
-score =  accuracy_score(dataY, res) 
-
-percentage = "{:.2%}".format(score)
-print(percentage)
+# percentage = "{:.2%}".format(score)
+# print(percentage)
 
 
 
@@ -458,12 +466,27 @@ print(percentage)
 
 
 
+sample = test_samples['open']['sample25']['emg']
+df_test = pd.DataFrame.from_dict(sample)
+# df = df_test.apply(preProcessEMGSegment)
 
+# if segmentation == True:
+#     df_sum  = df.sum(axis=1)
+#     idx_Start, idx_End = detectMuscleActivity(df_sum)
+# else:
+#     idx_Start = 0;
+#     idx_End = len(df)
+    
+# df_seg = df.iloc[idx_Start:idx_End]   
+# test_FilteredX.append(df_seg)
 
-# for i in 
+vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
 
-# 'P{} Pressure [mmHg]'.format(j)
+predicted_label = posProcessLabels(prediq_seq)
 
+print(predicted_label)
+responses_label.append(predicted_label)
+predict_vector.append(prediq_seq) 
 
 
 
