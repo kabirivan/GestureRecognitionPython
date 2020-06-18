@@ -30,13 +30,13 @@ from keras.layers import Dense
 from sklearn.preprocessing import LabelEncoder
 from keras.utils import np_utils
 
-
+from numba import jit, cuda 
+from numba import vectorize
 
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
 #gestures = ['noGesture', 'fist']
 
-a = {}
 
 
 files = []
@@ -64,7 +64,6 @@ def butter_lowpass_filter(data, fs, order):
     return y
 
 
-
 def preProcessEMGSegment(EMGsegment_in):
     
     EMG = max(EMGsegment_in)
@@ -88,7 +87,7 @@ def detectMuscleActivity(emg_sum):
     minWindowLength_Segmentation =  100
     hammingWdw_Length = np.hamming(25)
     numSamples_lapBetweenWdws = 10
-    threshForSum_AlongFreqInSpec = 0.85
+    threshForSum_AlongFreqInSpec = 0.857
 
     [s, f, t, im] = plt.specgram(emg_sum, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws, mode = 'magnitude', pad_to = 50)  
     sumAlongFreq = [sum(x) for x in zip(*s)]
@@ -136,7 +135,6 @@ def detectMuscleActivity(emg_sum):
     return int(idx_Start), int(idx_End)
 
 
-
 def findCentersClass(emg_filtered,sample):
     distances = []
     column = np.arange(0,sample)
@@ -179,7 +177,6 @@ def featureExtraction(emg_filtered, centers):
     
     return dataX
 
-
 def preProcessFeautureVector(dataX_in):
     
     dataX_mean = dataX_in.mean(axis = 1)
@@ -198,7 +195,7 @@ def trainFeedForwardNetwork(X_train,y_train):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 25, epochs = 1500, verbose = 0)
+    classifier.fit(X_train, y_train, batch_size = 15, epochs = 600)
     
     return classifier
 
@@ -231,11 +228,11 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         idx_start, idx_end = detectMuscleActivity(window_sum)
         t_acq = time.time()-tStart
         
-        if idx_start != 1 & idx_end != len(window_emg) & (idx_end-idx_start) > 75:
+        if idx_start != 1 & idx_end != len(window_emg):
             
             tStart = time.time()
-            filt_window_emg = window_emg.apply(preProcessEMGSegment)
             window_emg = filt_window_emg.loc[idx_start:idx_end]
+            
             
             t_filt = time.time() - tStart
             
@@ -255,7 +252,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             if max_probNN <= 0.5:
                 predicted_labelNN = 1
             t_threshNN = time.time() - tStart 
-            print(predicted_labelNN)
+            #print(predicted_labelNN)
            
         else:
             
@@ -264,7 +261,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_classiNN = 0
             t_threshNN = 0
             predicted_labelNN = 1
-            print('1')
+           #print('1')
             
             
         count = count + 1
@@ -286,12 +283,11 @@ def unique(list1):
     return unique_list 
 
 
-
 def posProcessLabels(predictions):
     
     predictions[0] = 1
     postProcessedLabels = predictions
-    finalLabel = []
+    # finalLabel = []
     
     
     for i in range(1,len(predictions)):
@@ -316,8 +312,9 @@ def posProcessLabels(predictions):
         
         if len(uniqueLabelsWithoutRest) > 1:
             finalLabel = uniqueLabelsWithoutRest[0]
+            
         else:
-            finalLabel = uniqueLabelsWithoutRest
+            finalLabel = uniqueLabelsWithoutRest[0]
                    
     
     return finalLabel
@@ -358,7 +355,7 @@ for move in gestures:
 dataX = featureExtraction(train_FilteredX, centers)
 dataX6 = preProcessFeautureVector(dataX)
 
-
+X_train = dataX6
    
 # time_start = time.time()
 # tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
@@ -381,7 +378,11 @@ dataX6 = preProcessFeautureVector(dataX)
 # )
 
 
-X_train = dataX6
+# seed = 7
+# np.random.seed(seed)
+
+
+
 y_train = np.array(dataY)
 encoder = LabelEncoder()
 encoder.fit(y_train)
@@ -391,22 +392,65 @@ estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 
+responses_label = []
+predict_vector = []
+
+
+test_FilteredX = []
 
 test_samples = user['testingSamples']
-sample = test_samples['open']['sample15']['emg']
-df_test = pd.DataFrame.from_dict(sample)
+
+for move in gestures:   
+    for i in range(1,26):
+        sample = test_samples[move]['sample%s' %i]['emg']
+        df_test = pd.DataFrame.from_dict(sample)
+        df = df_test.apply(preProcessEMGSegment)
+        
+        if segmentation == True:
+            df_sum  = df.sum(axis=1)
+            idx_Start, idx_End = detectMuscleActivity(df_sum)
+        else:
+            idx_Start = 0;
+            idx_End = len(df)
+            
+        df_seg = df.iloc[idx_Start:idx_End]   
+        test_FilteredX.append(df_seg)
+    
+        # vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
+    
+        # predicted_label = posProcessLabels(prediq_seq)
+        
+        # print(predicted_label)
+        # responses_label.append(predicted_label)
+        # predict_vector.append(prediq_seq) 
+    
+X_te = featureExtraction(test_FilteredX, centers) 
+X_test = preProcessFeautureVector(X_te)
+
+results = estimator.predict(X_test).tolist()   
+
+res = []
+
+for item in results: 
+    max_probNN = max(item)
+    predicted_labelNN = item.index(max_probNN) + 1
+    res.append(predicted_labelNN)
 
 
-vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
-
-
-
-predicted_label = posProcessLabels(prediq_seq)
 
 
 
 
 
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(dataY, res)
+f = sns.heatmap(cm, annot=True)
+
+from sklearn.metrics import accuracy_score
+score =  accuracy_score(dataY, res) 
+
+percentage = "{:.2%}".format(score)
+print(percentage)
 
 
 
