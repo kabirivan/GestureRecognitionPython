@@ -70,7 +70,7 @@ train_samples = user['trainingSamples']
 def butter_lowpass_filter(data, fs, order):
     # Get the filter coefficients 
     b, a = signal.butter(order, fs, 'low', analog = False)
-    y = signal.filtfilt(b, a, data, axis = 0)
+    y = signal.filtfilt(b, a, data)
     return y
 
 
@@ -242,13 +242,14 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             
             tStart = time.time()
             
-            window_emg = window_emg.loc[idx_start:idx_end]
             filt_window_emg = window_emg.apply(preProcessEMGSegment)
+            window_emg = filt_window_emg.loc[idx_start:idx_end]
+            
             
             t_filt = time.time() - tStart
             
             tStart = time.time()
-            featVector = featureExtraction([filt_window_emg], centers)
+            featVector = featureExtraction([window_emg], centers)
             featVectorP = preProcessFeautureVector(featVector)
             t_featExtra =  time.time() - tStart
             
@@ -334,7 +335,7 @@ def posProcessLabels(predictions):
 
 
 
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 5) for x in range(1,len(gestures)+1)))
+dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 segmentation = True
 train_FilteredX = []
 train_aux = []
@@ -342,7 +343,7 @@ train_aux = []
 centers = []
 
 for move in gestures:   
-    for i in range(1,6):     
+    for i in range(1,26):     
         sample = train_samples[move]['sample%s' %i]['emg']
         df = pd.DataFrame.from_dict(sample)
         df = df.apply(preProcessEMGSegment)
@@ -358,7 +359,7 @@ for move in gestures:
         train_aux.append(df_seg)
         train_FilteredX.append(df_seg)
         
-    center_gesture = findCentersClass(train_aux,5)
+    center_gesture = findCentersClass(train_aux,25)
     centers.append(center_gesture)    
     train_aux = []
 
@@ -389,9 +390,6 @@ X_train = dataX6
 # )
 
 
-# seed = 7
-# np.random.seed(seed)
-
 
 
 y_train = np.array(dataY)
@@ -410,6 +408,30 @@ predict_vector = []
 test_FilteredX = []
 
 test_samples = user['testingSamples']
+
+sample = test_samples['pinch']['sample12']['emg']
+df_test = pd.DataFrame.from_dict(sample)
+# df = df_test.apply(preProcessEMGSegment)
+
+# if segmentation == True:
+#     df_sum  = df.sum(axis=1)
+#     idx_Start, idx_End = detectMuscleActivity(df_sum)
+# else:
+#     idx_Start = 0;
+#     idx_End = len(df)
+    
+# df_seg = df.iloc[idx_Start:idx_End]   
+# test_FilteredX.append(df_seg)
+
+vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
+
+predicted_label = posProcessLabels(prediq_seq)
+
+print(predicted_label)
+responses_label.append(predicted_label)
+predict_vector.append(prediq_seq) 
+
+
 
 # for move in gestures:   
 #     for i in range(1,6):
@@ -466,27 +488,7 @@ test_samples = user['testingSamples']
 
 
 
-sample = test_samples['open']['sample25']['emg']
-df_test = pd.DataFrame.from_dict(sample)
-# df = df_test.apply(preProcessEMGSegment)
 
-# if segmentation == True:
-#     df_sum  = df.sum(axis=1)
-#     idx_Start, idx_End = detectMuscleActivity(df_sum)
-# else:
-#     idx_Start = 0;
-#     idx_End = len(df)
-    
-# df_seg = df.iloc[idx_Start:idx_End]   
-# test_FilteredX.append(df_seg)
-
-vec_time, time_seq, prediq_seq = classifyEMG_SegmentationNN(df_test, centers, estimator)
-
-predicted_label = posProcessLabels(prediq_seq)
-
-print(predicted_label)
-responses_label.append(predicted_label)
-predict_vector.append(prediq_seq) 
 
 
 
