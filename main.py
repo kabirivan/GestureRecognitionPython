@@ -53,8 +53,6 @@ from collections import Counter
 
 folderData = 'trainingJSON'
 gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
-#gestures = ['noGesture', 'fist']
-
 
 
 files = []
@@ -70,7 +68,6 @@ with open(file_selected) as file:
 
 # Training Process
 train_samples = user['trainingSamples']
-
 
 
 
@@ -96,7 +93,6 @@ def preProcessEMGSegment(EMGsegment_in):
     
     
     return EMGsegment_out
-
 
 
 def detectMuscleActivity(emg_sum):
@@ -156,7 +152,6 @@ def detectMuscleActivity(emg_sum):
 def findCentersClass(emg_filtered,sample):
     distances = []
     column = np.arange(0,sample)
-    #column = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']
     mtx_distances = pd.DataFrame(columns = column)
     mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
     
@@ -195,7 +190,7 @@ def featureExtraction(emg_filtered, centers):
     
     return dataX
 
-def preProcessFeautureVector(dataX_in):
+def preProcessFeatureVector(dataX_in):
     
     dataX_mean = dataX_in.mean(axis = 1)
     dataX_std = dataX_in.std(axis = 1)   
@@ -206,23 +201,41 @@ def preProcessFeautureVector(dataX_in):
     return dataX6
 
 
-def trainFeedForwardNetwork(X_train,y_train):
+def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     
     classifier = Sequential()
+    
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = None, input_dim = 6))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = len(X_train), validation_split= 0.3 ,epochs = 1000)
+    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1200, validation_data = (X_test, y_test),verbose = 0 )
     
     return classifier
 
 
-
+def majorite_vote(data, before, after):
+    
+    votes =[0,0,0,0,0,0]
+    class_maj = []
+        
+    for j in range(0,len(data)):
+        wind_mv = data[max(0,(j-before)):min(len(data),(j+after))]
+        
+        for k in range(0, len(gestures)):
+            a = [1 if i == k+1 else 0 for i in wind_mv]  
+            votes[k] = sum(a)
+            
+        findNumber = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
+        idx_label = findNumber(max(votes),votes)
+        class_maj.append( idx_label[0] + 1)
+        
+    
+    return class_maj
 
 
 def classifyEMG_SegmentationNN(dataX_test, centers, model):
-    
+    sc = StandardScaler()
     window_length = 500
     stride_length = 10
     emg_length = len(dataX_test)
@@ -246,23 +259,23 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         idx_start, idx_end = detectMuscleActivity(window_sum)
         t_acq = time.time()-tStart
         
-        if idx_start != 1 & idx_end != len(window_emg):
+        if (idx_start != 1) & (idx_end != len(window_emg)) & ((idx_end - idx_start) > 125):
             
             tStart = time.time()
             
-            filt_window_emg = window_emg.apply(preProcessEMGSegment)
-            window_emg = filt_window_emg.loc[idx_start:idx_end]
+            filt_window_emg1 = window_emg.apply(preProcessEMGSegment)
+            window_emg1 = filt_window_emg1.iloc[idx_start:idx_end]
             
             
             t_filt = time.time() - tStart
             
             tStart = time.time()
-            featVector = featureExtraction([window_emg], centers)
-            featVectorP = preProcessFeautureVector(featVector)
+            featVector = featureExtraction([window_emg1], centers)
+            featVectorP = preProcessFeatureVector(featVector)
             t_featExtra =  time.time() - tStart
             
             tStart = time.time()
-            x = model.predict(featVectorP).tolist()
+            x = model.predict_proba(featVectorP).tolist()
             probNN = x[0]
             max_probNN = max(probNN)
             predicted_labelNN = probNN.index(max_probNN) + 1
@@ -281,16 +294,17 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_classiNN = 0
             t_threshNN = 0
             predicted_labelNN = 1
-           #print('1')
+            #print('1')
             
             
         count = count + 1
         predLabel_seq.append(predicted_labelNN)
-        vecTime.append(start_point)
+        vecTime.append(start_point+(window_length/2)+50)
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
+    
+    pred_seq = majorite_vote(predLabel_seq, 4, 4)    
         
-        
-    return vecTime, timeSeq, predLabel_seq   
+    return  pred_seq, vecTime, timeSeq
 
 
 
@@ -303,23 +317,28 @@ def unique(list1):
     return unique_list 
 
 
-def posProcessLabels(predictions):
+def post_ProcessLabels(predicted_Seq):
     
+    time_post = []
+    predictions = predicted_Seq.copy()
     predictions[0] = 1
-    postProcessedLabels = predictions
-    # finalLabel = []
-    
-    
+    postProcessed_Labels = predictions.copy()
+        
     for i in range(1,len(predictions)):
+        
+        tStart = time.time()
         
         if predictions[i] == predictions[i-1]:
             cond = 1
         else:    
             cond = 0
             
-        postProcessedLabels[i] =  (1 * cond) + (predictions[i]* (1 - cond))  
-            
-    uniqueLabels = unique(postProcessedLabels)
+        postProcessed_Labels[i] =  (1 * cond) + (predictions[i]* (1 - cond))
+        t_post = time.time() - tStart
+        time_post.append(t_post)
+        
+    time_post.insert(0,time_post[0])     
+    uniqueLabels = unique(postProcessed_Labels)
     
     an_iterator = filter(lambda number: number != 1, uniqueLabels)
     uniqueLabelsWithoutRest = list(an_iterator)
@@ -337,7 +356,8 @@ def posProcessLabels(predictions):
             finalLabel = uniqueLabelsWithoutRest[0]
                    
     
-    return finalLabel
+    return finalLabel, time_post
+
 
 
 
