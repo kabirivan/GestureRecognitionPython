@@ -43,12 +43,55 @@ from sklearn.metrics import accuracy_score
 import random
 from sklearn.preprocessing import StandardScaler
 
-
-
 from collections import Counter
 
 
 
+#%% Functions
+
+
+
+def get_y_train(train_samples):
+    
+    y_train = []
+    
+    for sample in train_samples:
+        
+        y = train_samples[sample]['gestureName']
+        
+        if y == 'noGesture':
+            
+            code = 1
+            
+        elif y == 'fist':
+            
+            code = 2
+            
+        elif y == 'waveIn':
+            
+            code = 3
+            
+        elif y == 'waveOut':
+            
+            code = 4
+            
+        elif y == 'open':
+            
+            code = 5
+            
+        elif y == 'pinch':
+            
+            code = 6
+                
+       
+        y_train.append(code)
+        
+        encoder = LabelEncoder()
+        encoder.fit(y_train)
+        encoded_Y = encoder.transform(y_train)
+        target = np_utils.to_categorical(encoded_Y)
+
+    return target
 
 
 def butter_lowpass_filter(data, fs, order):
@@ -339,13 +382,10 @@ def post_ProcessLabels(predicted_Seq):
 
 
 
-
+#%% Read user data
 
 
 folderData = 'trainingJSON'
-gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
-
-
 files = []
 
 for root, dirs, files in os.walk(folderData):
@@ -359,55 +399,84 @@ with open(file_selected) as file:
 
 # Training Process
 train_samples = user['trainingSamples']
+num_samples = 25
+y_train = get_y_train(train_samples)
 
 
-
-
-
-dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
-segmentation = True
 train_FilteredX = []
 train_aux = []
-
 centers = []
+counter = 0
 
-for move in gestures:   
-    for i in range(1,26):     
-        sample = train_samples[move]['sample%s' %i]['emg']
-        df = pd.DataFrame.from_dict(sample)
-        df = df.apply(preProcessEMGSegment)
+
+for gestures in train_samples:
+    
+    x = (train_samples[gestures]['emg'])
+    df = pd.DataFrame.from_dict(x) / 128
+    df = df.apply(preProcessEMGSegment)
+    
+    df_sum  = df.sum(axis=1)
+    idx_Start, idx_End = detectMuscleActivity(df_sum)
+    df_seg = df.iloc[idx_Start:idx_End]
+    
+    train_aux.append(df_seg)
+    
+    counter = counter + 1
+    
+    if counter == num_samples:
+        print('Gesturee')
+        center_gesture = findCentersClass(train_aux,num_samples)
+        centers.append(center_gesture)
+        counter = 0
+        train_aux = []
+    
+    train_FilteredX.append(df_seg)    
+
+    
+features = featureExtraction(train_FilteredX, centers)
+X_train = preProcessFeautureVector(features)
+estimator = trainFeedForwardNetwork(X_train, y_train)
+
+
+
+
+# for move in gestures:   
+#     for i in range(1,26):     
+#         sample = train_samples[move]['sample%s' %i]['emg']
+#         df = pd.DataFrame.from_dict(sample)
+#         df = df.apply(preProcessEMGSegment)
         
-        if segmentation == True:
-            df_sum  = df.sum(axis=1)
-            idx_Start, idx_End = detectMuscleActivity(df_sum)
-        else:
-            idx_Start = 0;
-            idx_End = len(df)
+#         if segmentation == True:
+#             df_sum  = df.sum(axis=1)
+#             idx_Start, idx_End = detectMuscleActivity(df_sum)
+#         else:
+#             idx_Start = 0;
+#             idx_End = len(df)
             
-        df_seg = df.iloc[idx_Start:idx_End]   
-        train_aux.append(df_seg)
-        train_FilteredX.append(df_seg)
+#         df_seg = df.iloc[idx_Start:idx_End]   
+#         train_aux.append(df_seg)
+#         train_FilteredX.append(df_seg)
         
-    center_gesture = findCentersClass(train_aux,25)
-    centers.append(center_gesture)    
-    train_aux = []
+#     center_gesture = findCentersClass(train_aux,25)
+#     centers.append(center_gesture)    
+#     train_aux = []
 
 
-dataX = featureExtraction(train_FilteredX, centers)
-dataX6 = preProcessFeautureVector(dataX)
+# dataX = featureExtraction(train_FilteredX, centers)
+# dataX6 = preProcessFeautureVector(dataX)
 
-X_train = dataX6
+# X_train = dataX6
 
 
 
 
    
-y_train = np.array(dataY)
-encoder = LabelEncoder()
-encoder.fit(y_train)
-encoded_Y = encoder.transform(y_train)
-dummy_y = np_utils.to_categorical(encoded_Y)
-estimator = trainFeedForwardNetwork(X_train,dummy_y)
+# y_train = np.array(dataY)
+# encoder = LabelEncoder()
+# encoder.fit(y_train)
+# encoded_Y = encoder.transform(y_train)
+# dummy_y = np_utils.to_categorical(encoded_Y)
+# estimator = trainFeedForwardNetwork(X_train,dummy_y)
 
 
 
