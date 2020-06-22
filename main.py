@@ -36,7 +36,6 @@ import matplotlib.font_manager as fm
 from matplotlib.collections import QuadMesh
 
 
-
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 
@@ -48,26 +47,6 @@ from sklearn.preprocessing import StandardScaler
 
 from collections import Counter
 
-
-
-
-folderData = 'trainingJSON'
-gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
-
-
-files = []
-
-for root, dirs, files in os.walk(folderData):
-     print('Dataset Ready !')
-         
-         
-file_selected = root + '/' + files[2]  
-
-with open(file_selected) as file:
-    user = json.load(file)     
-
-# Training Process
-train_samples = user['trainingSamples']
 
 
 
@@ -363,6 +342,28 @@ def post_ProcessLabels(predicted_Seq):
 
 
 
+folderData = 'trainingJSON'
+gestures = ['noGesture', 'fist', 'waveIn', 'waveOut', 'open', 'pinch']
+
+
+files = []
+
+for root, dirs, files in os.walk(folderData):
+     print('Dataset Ready !')
+         
+         
+file_selected = root + '/' + files[2]  
+
+with open(file_selected) as file:
+    user = json.load(file)     
+
+# Training Process
+train_samples = user['trainingSamples']
+
+
+
+
+
 dataY = list(itertools.chain.from_iterable(itertools.repeat(x, 25) for x in range(1,len(gestures)+1)))
 segmentation = True
 train_FilteredX = []
@@ -401,8 +402,6 @@ X_train = dataX6
 
 
    
-
-
 y_train = np.array(dataY)
 encoder = LabelEncoder()
 encoder.fit(y_train)
