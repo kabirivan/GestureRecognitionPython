@@ -29,7 +29,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from sklearn.preprocessing import LabelEncoder
 from keras.utils import np_utils
-
+from keras.optimizers import Adam, SGD
 
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
@@ -39,6 +39,14 @@ from matplotlib.collections import QuadMesh
 
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
+
+
+import random
+from sklearn.preprocessing import StandardScaler
+
+
+
+from collections import Counter
 
 
 
@@ -205,7 +213,7 @@ def trainFeedForwardNetwork(X_train,y_train):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 15, epochs = 600)
+    classifier.fit(X_train, y_train, batch_size = len(X_train), validation_split= 0.3 ,epochs = 1000)
     
     return classifier
 
@@ -409,7 +417,7 @@ test_FilteredX = []
 
 test_samples = user['testingSamples']
 
-sample = test_samples['pinch']['sample12']['emg']
+sample = test_samples['pinch']['sample5']['emg']
 df_test = pd.DataFrame.from_dict(sample)
 # df = df_test.apply(preProcessEMGSegment)
 
@@ -430,6 +438,7 @@ predicted_label = posProcessLabels(prediq_seq)
 print(predicted_label)
 responses_label.append(predicted_label)
 predict_vector.append(prediq_seq) 
+
 
 
 
