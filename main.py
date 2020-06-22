@@ -265,8 +265,8 @@ def majorite_vote(data, before, after):
 
 def classifyEMG_SegmentationNN(dataX_test, centers, model):
     sc = StandardScaler()
-    window_length = 500
-    stride_length = 10
+    window_length = 600
+    stride_length = 30
     emg_length = len(dataX_test)
     predLabel_seq = []
     vecTime = []
