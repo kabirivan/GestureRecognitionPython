@@ -86,12 +86,8 @@ def get_y_train(train_samples):
        
         y_train.append(code)
         
-        encoder = LabelEncoder()
-        encoder.fit(y_train)
-        encoded_Y = encoder.transform(y_train)
-        target = np_utils.to_categorical(encoded_Y)
 
-    return target
+    return y_train
 
 
 def butter_lowpass_filter(data, fs, order):
@@ -123,7 +119,7 @@ def detectMuscleActivity(emg_sum):
     minWindowLength_Segmentation =  100
     hammingWdw_Length = np.hamming(25)
     numSamples_lapBetweenWdws = 10
-    threshForSum_AlongFreqInSpec = 0.857
+    threshForSum_AlongFreqInSpec = 0.85
 
     [s, f, t, im] = plt.specgram(emg_sum, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws, mode = 'magnitude', pad_to = 50)  
     sumAlongFreq = [sum(x) for x in zip(*s)]
@@ -216,14 +212,14 @@ def preProcessFeatureVector(dataX_in):
     
     dataX_mean = dataX_in.mean(axis = 1)
     dataX_std = dataX_in.std(axis = 1)   
-    dataX_mean6 =  pd.concat([dataX_mean]*len(gestures), axis = 1)
-    dataX_std6 =  pd.concat([dataX_std]*len(gestures), axis = 1)   
+    dataX_mean6 =  pd.concat([dataX_mean]*6, axis = 1)
+    dataX_std6 =  pd.concat([dataX_std]*6, axis = 1)   
     dataX6 = (dataX_in - dataX_mean6)/dataX_std6
     
     return dataX6
 
 
-def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
+def trainFeedForwardNetwork(X_train,y_train):
     
     classifier = Sequential()
     
@@ -231,7 +227,7 @@ def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1200, validation_data = (X_test, y_test),verbose = 0 )
+    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1500,verbose = 2 )
     
     return classifier
 
@@ -400,7 +396,8 @@ with open(file_selected) as file:
 # Training Process
 train_samples = user['trainingSamples']
 num_samples = 25
-y_train = get_y_train(train_samples)
+num_gestures = 6
+
 
 
 train_FilteredX = []
@@ -434,7 +431,38 @@ for gestures in train_samples:
 
     
 features = featureExtraction(train_FilteredX, centers)
-X_train = preProcessFeautureVector(features)
+X_train = preProcessFeatureVector(features)
+
+
+
+
+
+
+
+
+
+
+
+targets = get_y_train(train_samples)
+
+
+y_train = decode_targets(targets)
+
+
+
+
+def decode_targets(y_train):
+    
+    encoder = LabelEncoder()
+    encoder.fit(y_train)
+    encoded_Y = encoder.transform(y_train)
+    target = np_utils.to_categorical(encoded_Y)
+    
+    return target    
+    
+
+
+
 estimator = trainFeedForwardNetwork(X_train, y_train)
 
 
