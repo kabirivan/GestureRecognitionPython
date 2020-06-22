@@ -129,7 +129,7 @@ def detectMuscleActivity(emg_sum):
     minWindowLength_Segmentation =  100
     hammingWdw_Length = np.hamming(25)
     numSamples_lapBetweenWdws = 10
-    threshForSum_AlongFreqInSpec = 0.85
+    threshForSum_AlongFreqInSpec = 0.857
 
     [s, f, t, im] = plt.specgram(emg_sum, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws, mode = 'magnitude', pad_to = 50)  
     sumAlongFreq = [sum(x) for x in zip(*s)]
@@ -238,7 +238,7 @@ def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1200, validation_data = (X_test, y_test),verbose = 0 )
+    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1300, validation_data = (X_test, y_test),verbose = 0 )
     
     return classifier
 
@@ -494,7 +494,7 @@ for sample in test_samples:
     
     print(sample)
     
-
+                   
 
 
 
