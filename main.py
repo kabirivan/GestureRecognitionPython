@@ -396,28 +396,11 @@ dataX = featureExtraction(train_FilteredX, centers)
 dataX6 = preProcessFeautureVector(dataX)
 
 X_train = dataX6
+
+
+
+
    
-# time_start = time.time()
-# tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
-# tsne_results = tsne.fit_transform(dataX6)
-# print('t-SNE done! Time elapsed: {} seconds'.format(time.time()-time_start))
-
-
-# dataX6['tsne-2d-one'] =tsne_results[:,0]
-# dataX6['tsne-2d-two']= tsne_results[:,1]
-# dataX6['y'] = dataY
-
-# plt.figure(figsize=(10,6))
-# sns.scatterplot(
-#     x="tsne-2d-one", y="tsne-2d-two",
-#     hue="y",
-#     palette=sns.color_palette("Set2", n_colors=6, desat=1),
-#     data=dataX6,
-#     legend="full",
-#     alpha=1
-# )
-
-
 
 
 y_train = np.array(dataY)
