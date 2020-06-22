@@ -90,6 +90,16 @@ def get_y_train(train_samples):
     return y_train
 
 
+def decode_targets(y_train):
+    
+    encoder = LabelEncoder()
+    encoder.fit(y_train)
+    encoded_Y = encoder.transform(y_train)
+    target = np_utils.to_categorical(encoded_Y)
+    
+    return target    
+
+
 def butter_lowpass_filter(data, fs, order):
     # Get the filter coefficients 
     b, a = signal.butter(order, fs, 'low', analog = False)
@@ -208,18 +218,19 @@ def featureExtraction(emg_filtered, centers):
     
     return dataX
 
+
 def preProcessFeatureVector(dataX_in):
     
     dataX_mean = dataX_in.mean(axis = 1)
     dataX_std = dataX_in.std(axis = 1)   
-    dataX_mean6 =  pd.concat([dataX_mean]*6, axis = 1)
-    dataX_std6 =  pd.concat([dataX_std]*6, axis = 1)   
+    dataX_mean6 =  pd.concat([dataX_mean]*num_gestures, axis = 1)
+    dataX_std6 =  pd.concat([dataX_std]*num_gestures, axis = 1)   
     dataX6 = (dataX_in - dataX_mean6)/dataX_std6
     
     return dataX6
 
 
-def trainFeedForwardNetwork(X_train,y_train):
+def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     
     classifier = Sequential()
     
@@ -227,7 +238,7 @@ def trainFeedForwardNetwork(X_train,y_train):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1500,verbose = 2 )
+    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1200, validation_data = (X_test, y_test),verbose = 0 )
     
     return classifier
 
@@ -240,7 +251,7 @@ def majorite_vote(data, before, after):
     for j in range(0,len(data)):
         wind_mv = data[max(0,(j-before)):min(len(data),(j+after))]
         
-        for k in range(0, len(gestures)):
+        for k in range(0, 6):
             a = [1 if i == k+1 else 0 for i in wind_mv]  
             votes[k] = sum(a)
             
@@ -398,6 +409,7 @@ train_samples = user['trainingSamples']
 num_samples = 25
 num_gestures = 6
 
+#%% Preprocess data
 
 
 train_FilteredX = []
@@ -429,91 +441,59 @@ for gestures in train_samples:
     
     train_FilteredX.append(df_seg)    
 
-    
+
+
+#%% Get Features
+
 features = featureExtraction(train_FilteredX, centers)
+
+#%% Training Data
 X_train = preProcessFeatureVector(features)
 
-
-
-
-
-
-
-
-
-
-
 targets = get_y_train(train_samples)
-
-
 y_train = decode_targets(targets)
 
 
+data_val = X_train.copy()
+data_val['6'] = targets
+
+xy_val = data_val.sample(frac=1).reset_index(drop=True)
 
 
-def decode_targets(y_train):
+X_val = xy_val.iloc[:,0:6]  
+y_val = decode_targets(xy_val['6'])
+
+
+estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
+
+
+
+
+#%% Testing Data
+
+vector_class = []
+vector_TimePoints = []
+vector_labels = []
+vector_ProcessingTimes = []
+
+test_samples = user['testingSamples']
+
+for sample in test_samples:
     
-    encoder = LabelEncoder()
-    encoder.fit(y_train)
-    encoded_Y = encoder.transform(y_train)
-    target = np_utils.to_categorical(encoded_Y)
+    x = (test_samples[sample]['emg'])
+    df_test = pd.DataFrame.from_dict(x) / 128
     
-    return target    
+    [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
+    predicted_label, t_post = post_ProcessLabels(predictedSeq)
+    estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
     
-
-
-
-estimator = trainFeedForwardNetwork(X_train, y_train)
-
-
-
-
-# for move in gestures:   
-#     for i in range(1,26):     
-#         sample = train_samples[move]['sample%s' %i]['emg']
-#         df = pd.DataFrame.from_dict(sample)
-#         df = df.apply(preProcessEMGSegment)
-        
-#         if segmentation == True:
-#             df_sum  = df.sum(axis=1)
-#             idx_Start, idx_End = detectMuscleActivity(df_sum)
-#         else:
-#             idx_Start = 0;
-#             idx_End = len(df)
-            
-#         df_seg = df.iloc[idx_Start:idx_End]   
-#         train_aux.append(df_seg)
-#         train_FilteredX.append(df_seg)
-        
-#     center_gesture = findCentersClass(train_aux,25)
-#     centers.append(center_gesture)    
-#     train_aux = []
-
-
-# dataX = featureExtraction(train_FilteredX, centers)
-# dataX6 = preProcessFeautureVector(dataX)
-
-# X_train = dataX6
-
-
-
-
-   
-# y_train = np.array(dataY)
-# encoder = LabelEncoder()
-# encoder.fit(y_train)
-# encoded_Y = encoder.transform(y_train)
-# dummy_y = np_utils.to_categorical(encoded_Y)
-# estimator = trainFeedForwardNetwork(X_train,dummy_y)
-
-
-
-
-
-
-
-
-
+    vector_class.append(predicted_label)
+    vector_labels.append(predictedSeq)
+    vector_TimePoints.append(vec_time)  
+    vector_ProcessingTimes.append(estimatedTime) 
+    
+    print(sample)
+    
 
 
 
