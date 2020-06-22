@@ -1,0 +1,10 @@
+name: recognitionEMG
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - spyder
+  - glueviz
+  - numba
+prefix: /opt/anaconda3/envs/recognitionEMG
+

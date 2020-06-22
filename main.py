@@ -288,7 +288,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         idx_start, idx_end = detectMuscleActivity(window_sum)
         t_acq = time.time()-tStart
         
-        if (idx_start != 1) & (idx_end != len(window_emg)) & ((idx_end - idx_start) > 125):
+        if (idx_start != 1) & (idx_end != len(window_emg)) & ((idx_end - idx_start) > 85):
             
             tStart = time.time()
             
