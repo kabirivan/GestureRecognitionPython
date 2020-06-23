@@ -449,7 +449,7 @@ def code2gesture_labels(vector_class_prev,vector_labels_prev):
 
 
 #%% Read user data
-
+test = collections.defaultdict(dict)
 
 folderData = 'trainingJSON'
 files = []
@@ -458,25 +458,6 @@ for root, dirs, files in os.walk(folderData):
      print('Dataset Ready !')
          
          
-file_selected = root + '/' + files[2]  
-
-with open(file_selected) as file:
-    user = json.load(file)     
-
-# Training Process
-train_samples = user['trainingSamples']
-num_samples = 25
-num_gestures = 6
-
-
-for user_data in files:
-    file_selected = root + '/' + user_data 
-    with open(file_selected) as file:
-        user = json.load(file)   
-        
-        name_user = user['userInfo']['name']
-        print(name_user)   
-
 
 #%% Preprocess data
 
@@ -571,20 +552,24 @@ for user_data in files:
             print(sample)
     
                    
-
+#%%
 
 
         d = collections.defaultdict(dict)
-        d[name_user]['vectorOfClass'] = vector_class
-        d[name_user]['vectorOfLabels'] = vector_labels
-        d[name_user]['vectorOfTimePoints'] = vector_TimePoints
-        d[name_user]['vectorOfProcessingTimes']= vector_ProcessingTimes
-
-        test = collections.defaultdict(dict)
         
-        test['testing'] = d   
+        
+        for i in range(0,150):
+            d[i]['vectorOfClass'] = vector_class[i]
+            d[i]['vectorOfLabels'] = vector_labels[i]
+            d[i]['vectorOfTimePoints'] = vector_TimePoints[i]
+            d[i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]
 
 
-    
+        
+    test[name_user]['testing'] = d   
+
+
+# with open('responses.txt', 'w') as json_file:
+#   json.dump(test, json_file)   
 
 
