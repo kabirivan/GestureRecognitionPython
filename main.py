@@ -558,12 +558,11 @@ for user_data in files:
         d = collections.defaultdict(dict)
         
         
-        for i in range(0,150):
-            d[i]['vectorOfClass'] = vector_class[i]
-            d[i]['vectorOfLabels'] = vector_labels[i]
-            d[i]['vectorOfTimePoints'] = vector_TimePoints[i]
-            d[i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]
-
+        for i in range(1,151):
+            d['idx_%s' %i]['vectorOfClass'] = vector_class[i]
+            d['idx_%s' %i]['vectorOfLabels'] = vector_labels[i]
+            d['idx_%s' %i]['vectorOfTimePoints'] = vector_TimePoints[i]
+            d['idx_%s' %i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]
 
         
     test[name_user]['testing'] = d   
