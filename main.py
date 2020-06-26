@@ -14,12 +14,12 @@ import pandas as pd
 import math
 from scipy import signal
 import numpy as np
-import simplespectral as sp
 import matplotlib.pyplot as plt
 from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 from sklearn.manifold import TSNE
 import seaborn as sns
+import multiprocessing
 
 import time
 
@@ -178,8 +178,9 @@ def detectMuscleActivity(emg_sum):
     return int(idx_Start), int(idx_End)
 
 
-def findCentersClass(emg_filtered,sample):
+def findCentersClass(emg_filtered):
     distances = []
+    sample = 25
     column = np.arange(0,sample)
     mtx_distances = pd.DataFrame(columns = column)
     mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
@@ -496,7 +497,9 @@ for user_data in files:
             
             if counter == num_samples:
                 print('Gesturee')
-                center_gesture = findCentersClass(train_aux,num_samples)
+                pool = multiprocessing.Pool()
+                center_gesture = pool.map(findCentersClass, train_aux) 
+                #center_gesture = findCentersClass(train_aux)
                 centers.append(center_gesture)
                 counter = 0
                 train_aux = []
@@ -570,5 +573,11 @@ for user_data in files:
 
 with open('responses.txt', 'w') as json_file:
   json.dump(test, json_file)   
+
+
+#%%
+
+
+print("Number of cpu : ", multiprocessing.cpu_count())
 
 
