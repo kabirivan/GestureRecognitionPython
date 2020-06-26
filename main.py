@@ -19,7 +19,7 @@ from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 from sklearn.manifold import TSNE
 import seaborn as sns
-import multiprocessing
+import multiprocessing as mp
 
 import time
 
@@ -497,9 +497,7 @@ for user_data in files:
             
             if counter == num_samples:
                 print('Gesturee')
-                pool = multiprocessing.Pool()
-                center_gesture = pool.map(findCentersClass, train_aux) 
-                #center_gesture = findCentersClass(train_aux)
+                center_gesture = findCentersClass(train_aux)
                 centers.append(center_gesture)
                 counter = 0
                 train_aux = []
