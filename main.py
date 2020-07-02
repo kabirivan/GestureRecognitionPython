@@ -46,7 +46,7 @@ import collections
 from collections import Counter
 
 import multiprocessing as mp
-
+from joblib import Parallel, delayed
 
 #%% Functions
 
@@ -451,7 +451,20 @@ def code2gesture_labels(vector_class_prev,vector_labels_prev):
 
 
 
-
+def testing(x, centers, estimator):
+    
+    
+    df_test = pd.DataFrame.from_dict(x) / 128
+    
+    [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
+    predicted_label, t_post = post_ProcessLabels(predictedSeq)
+    estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
+    
+    vector_ProcessingTimes.append(estimatedTime) 
+    
+    vector_class, vector_labels = code2gesture_labels(predicted_label, predictedSeq)
+    
+    return vector_class, vector_labels, estimatedTime, time_seq
 
 
 
@@ -505,17 +518,15 @@ for user_data in files:
             
             if counter == num_samples:
                 print('Gesturee')
-                train_FilteredX.append(train_aux)
+                centers = findCentersClass(train_aux)
+                # train_FilteredX.append(train_aux)
                 counter = 0
                 train_aux = []
             
-                         
+        # centers = Parallel(n_jobs=8)(delayed(findCentersClass)(ges) for ges in train_FilteredX)
         
-        pool = mp.Pool(mp.cpu_count())
-        centers = pool.map(findCentersClass, [ges for ges in train_FilteredX])      
-        features = featureExtraction(train_FilteredX_app, centers)
-        pool.close()
-        
+        features = featureExtraction(train_FilteredX_app, centers)     
+        X_train = preProcessFeatureVector(features)
         
         targets = get_y_train(train_samples)
         y_train = decode_targets(targets)
@@ -540,7 +551,8 @@ for user_data in files:
         vector_ProcessingTimes = []
         
         test_samples = user['testingSamples']
-        
+               
+            
         for sample in test_samples:
             
             x = (test_samples[sample]['emg'])
@@ -557,11 +569,6 @@ for user_data in files:
             
             vector_class, vector_labels = code2gesture_labels(vector_class_prev,vector_labels_prev)
             
-            print(sample)
-    
-                   
-#%%
-
 
         d = collections.defaultdict(dict)
         
