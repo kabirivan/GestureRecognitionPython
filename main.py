@@ -533,7 +533,6 @@ for user_data in files:
         estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
 
 
-
         vector_class_prev = []
         vector_TimePoints = []
         vector_labels_prev = []
