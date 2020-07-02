@@ -187,6 +187,8 @@ def findCentersClass(emg_filtered):
     mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
     
     
+    
+    
     for sample_i in emg_filtered:
         for sample_j in emg_filtered:   
             dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
@@ -476,8 +478,6 @@ for user_data in files:
         name_user = user['userInfo']['name']
         print(name_user)  
 
-
-
         train_samples = user['trainingSamples']
         num_samples = 25
         num_gestures = 6
@@ -485,6 +485,8 @@ for user_data in files:
         train_aux = []
         centers = []
         counter = 0
+
+
 
 
         for sample in train_samples:
@@ -503,17 +505,14 @@ for user_data in files:
             
             if counter == num_samples:
                 print('Gesturee')
+                train_FilteredX.append(train_aux)
+                
 
-                center_gesture = findCentersClass(train_aux)
-                centers.append(center_gesture)
+            #     center_gesture = findCentersClass(train_aux)
+            #     centers.append(center_gesture)
                 counter = 0
                 train_aux = []
             
-            train_FilteredX.append(df_seg)
-            
-            
-       
-
     
 
   
