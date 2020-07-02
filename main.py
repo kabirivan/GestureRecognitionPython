@@ -19,7 +19,6 @@ from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 from sklearn.manifold import TSNE
 import seaborn as sns
-import multiprocessing as mp
 
 import time
 
