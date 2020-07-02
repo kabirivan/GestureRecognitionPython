@@ -46,13 +46,7 @@ import collections
 from collections import Counter
 
 import multiprocessing as mp
-import ray
-import psutil
 
-
-
-num_cpus = psutil.cpu_count(logical=False)
-ray.init(num_cpus=num_cpus)
 
 #%% Functions
 
@@ -184,7 +178,7 @@ def detectMuscleActivity(emg_sum):
     return int(idx_Start), int(idx_End)
 
 
-@ray.remote
+
 def findCentersClass(emg_filtered):
     distances = []
     sample = 25
@@ -510,8 +504,7 @@ for user_data in files:
             if counter == num_samples:
                 print('Gesturee')
 
-                center_gesture1 = findCentersClass.remote(train_aux)
-                center_gesture = ray.get(center_gesture1)
+                center_gesture = findCentersClass(train_aux)
                 centers.append(center_gesture)
                 counter = 0
                 train_aux = []
