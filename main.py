@@ -509,12 +509,13 @@ for user_data in files:
                 counter = 0
                 train_aux = []
             
-            
-                
+                         
         
         pool = mp.Pool(mp.cpu_count())
         centers = pool.map(findCentersClass, [ges for ges in train_FilteredX])      
         features = featureExtraction(train_FilteredX_app, centers)
+        pool.close()
+        
         
         targets = get_y_train(train_samples)
         y_train = decode_targets(targets)
