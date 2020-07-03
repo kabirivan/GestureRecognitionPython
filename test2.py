@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun May 31 21:06:52 2020
+Created on Thu Jul  2 13:55:47 2020
 
 @author: aguasharo
 """
+
 from __future__ import print_function
 
 import json
@@ -47,9 +48,6 @@ from collections import Counter
 
 import multiprocessing as mp
 from joblib import Parallel, delayed
-
-
-import ray
 
 #%% Functions
 
@@ -181,13 +179,15 @@ def detectMuscleActivity(emg_sum):
     return int(idx_Start), int(idx_End)
 
 
-@ray.remote
+
 def findCentersClass(emg_filtered):
     distances = []
     sample = 25
     column = np.arange(0,sample)
     mtx_distances = pd.DataFrame(columns = column)
     mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
+    
+    
     
     
     for sample_i in emg_filtered:
@@ -469,10 +469,56 @@ def testing(x, centers, estimator):
 
 
 
+def recognitionModel_training(train_samples):
+    
+    num_samples = 25
+    num_gestures = 6
+    train_FilteredX = []
+    train_FilteredX_app = []
+    train_aux = []
+    centers = []
+    counter = 0
+
+
+    for sample in train_samples:
+        
+        x = (train_samples[sample]['emg'])
+        df = pd.DataFrame.from_dict(x) / 128
+        df = df.apply(preProcessEMGSegment)
+        
+        df_sum  = df.sum(axis=1)
+        idx_Start, idx_End = detectMuscleActivity(df_sum)
+        df_seg = df.iloc[idx_Start:idx_End]
+        
+        train_aux.append(df_seg)
+        train_FilteredX_app.append(df_seg)
+        
+        counter = counter + 1
+        
+        if counter == num_samples:
+            print('Gesturee')            
+            center_gesture1 = findCentersClass(train_aux)
+            centers.append(center_gesture1)
+            # train_FilteredX.append(train_aux)
+            counter = 0
+            train_aux = []
+        
+    # centers = Parallel(n_jobs=8)(delayed(findCentersClass)(ges) for ges in train_FilteredX)
+    
+    features = featureExtraction(train_FilteredX_app, centers)     
+    X_train = preProcessFeatureVector(features)
+    
+    
+    return X_train, centers
+
+
+
+
+
+
 
 #%% Read user data
 test = collections.defaultdict(dict)
-ray.init()
 
 folderData = 'trainingJSON'
 files = []
@@ -494,156 +540,12 @@ for user_data in files:
         print(name_user)  
 
         train_samples = user['trainingSamples']
-        num_samples = 25
-        num_gestures = 6
-        train_FilteredX = []
-        train_FilteredX_app = []
-        train_aux = []
-        centers = []
-        counter = 0
-
-
-        for sample in train_samples:
-            
-            x = (train_samples[sample]['emg'])
-            df = pd.DataFrame.from_dict(x) / 128
-            df = df.apply(preProcessEMGSegment)
-            
-            df_sum  = df.sum(axis=1)
-            idx_Start, idx_End = detectMuscleActivity(df_sum)
-            df_seg = df.iloc[idx_Start:idx_End]
-            
-            train_aux.append(df_seg)
-            train_FilteredX_app.append(df_seg)
-            
-            counter = counter + 1
-            
-            if counter == num_samples:
-                print('Gesturee')
-                center_gesture = findCentersClass.remote(train_aux)
-                
-                # train_FilteredX.append(train_aux)
-                counter = 0
-                train_aux = []
-            
-        # centers = Parallel(n_jobs=8)(delayed(findCentersClass)(ges) for ges in train_FilteredX)
-        centers = ray.get(center_gesture)
         
+        pool = mp.Pool()
         
+        X, Y = pool.map(recognitionModel_training,train_samples)
+    
         
-        
-        features = featureExtraction(train_FilteredX_app, centers)     
-        X_train = preProcessFeatureVector(features)
-        
-        targets = get_y_train(train_samples)
-        y_train = decode_targets(targets)
-        
-        
-        data_val = X_train.copy()
-        data_val['6'] = targets
-        
-        xy_val = data_val.sample(frac=1).reset_index(drop=True)
-        
-        
-        X_val = xy_val.iloc[:,0:6]  
-        y_val = decode_targets(xy_val['6'])
-        
-        
-        estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
-
-
-        vector_class_prev = []
-        vector_TimePoints = []
-        vector_labels_prev = []
-        vector_ProcessingTimes = []
-        
-        test_samples = user['testingSamples']
-               
-            
-        for sample in test_samples:
-            
-            x = (test_samples[sample]['emg'])
-            df_test = pd.DataFrame.from_dict(x) / 128
-            
-            [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
-            predicted_label, t_post = post_ProcessLabels(predictedSeq)
-            estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
-            
-            vector_class_prev.append(predicted_label)
-            vector_labels_prev.append(predictedSeq)
-            vector_TimePoints.append(vec_time)  
-            vector_ProcessingTimes.append(estimatedTime) 
-            
-            vector_class, vector_labels = code2gesture_labels(vector_class_prev,vector_labels_prev)
-            
-
-        d = collections.defaultdict(dict)
-        
-        
-        for i in range(0,150):
-            d['idx_%s' %i]['class'] = vector_class[i]
-            d['idx_%s' %i]['vectorOfLabels'] = vector_labels[i]
-            d['idx_%s' %i]['vectorOfTimePoints'] = vector_TimePoints[i]
-            d['idx_%s' %i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]
-
-        
-    test[name_user]['testing'] = d   
-
-
-with open('responses.txt', 'w') as json_file:
-  json.dump(test, json_file)   
-
-
-#%% Preprocess data
-
-# for user_data in files:
-#     file_selected = root + '/' + user_data 
-#     with open(file_selected) as file:
-#         user = json.load(file)   
-        
-#         name_user = user['userInfo']['name']
-#         print(name_user)  
-
-
-
-#         train_samples = user['trainingSamples']
-#         num_samples = 25
-#         num_gestures = 6
-#         train_FilteredX = []
-#         train_aux = []
-#         centers = []
-#         counter = 0
-
-
-#         for sample in train_samples:
-            
-#             x = (train_samples[sample]['emg'])
-#             df = pd.DataFrame.from_dict(x) / 128
-#             df = df.apply(preProcessEMGSegment)
-            
-#             df_sum  = df.sum(axis=1)
-#             idx_Start, idx_End = detectMuscleActivity(df_sum)
-#             df_seg = df.iloc[idx_Start:idx_End]
-            
-#             train_aux.append(df_seg)
-            
-#             counter = counter + 1
-            
-#             if counter == num_samples:
-#                 print('Gesturee')
-
-#                 center_gesture = findCentersClass(train_aux)
-#                 centers.append(center_gesture)
-#                 counter = 0
-#                 train_aux = []
-            
-#             train_FilteredX.append(df_seg)
-            
-            
-#         features = featureExtraction(train_FilteredX, centers)
-        
-#         X_train = preProcessFeatureVector(features)
-
 #         targets = get_y_train(train_samples)
 #         y_train = decode_targets(targets)
         
@@ -661,14 +563,14 @@ with open('responses.txt', 'w') as json_file:
 #         estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
 
 
-
 #         vector_class_prev = []
 #         vector_TimePoints = []
 #         vector_labels_prev = []
 #         vector_ProcessingTimes = []
         
 #         test_samples = user['testingSamples']
-        
+               
+            
 #         for sample in test_samples:
             
 #             x = (test_samples[sample]['emg'])
@@ -685,11 +587,6 @@ with open('responses.txt', 'w') as json_file:
             
 #             vector_class, vector_labels = code2gesture_labels(vector_class_prev,vector_labels_prev)
             
-#             print(sample)
-    
-                   
-# #%%
-
 
 #         d = collections.defaultdict(dict)
         
@@ -708,9 +605,5 @@ with open('responses.txt', 'w') as json_file:
 #   json.dump(test, json_file)   
 
 
-# #%%
-
-
-# print("Number of cpu : ", mp.cpu_count())
 
 
