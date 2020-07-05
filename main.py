@@ -63,6 +63,10 @@ def get_x_train(user,sample):
     return df
 
 
+    
+
+
+
 
 def get_y_train(train_samples):
     
@@ -188,6 +192,16 @@ def detectMuscleActivity(emg_sum):
 
 
     return int(idx_Start), int(idx_End)
+
+
+def EMG_segment(train_filtered_X):
+    
+    df_sum  = train_filtered_X.sum(axis=1)
+    idx_Start, idx_End = detectMuscleActivity(df_sum)
+    df_seg = train_filtered_X.iloc[idx_Start:idx_End]
+    
+    return df_seg 
+
 
 
 @ray.remote
@@ -505,7 +519,7 @@ for user_data in files:
         train_samples = user['trainingSamples']
         num_samples = 25
         num_gestures = 6
-        train_FilteredX = []
+        train_segment_X = []
         train_FilteredX_app = []
         train_aux = []
         centers = []
@@ -514,18 +528,21 @@ for user_data in files:
 
         for sample in train_samples:
             
-            x = (train_samples[sample]['emg'])
-            df = pd.DataFrame.from_dict(x) / 128
-            df = df.apply(preProcessEMGSegment)
+            train_RawX = get_x_train(user,sample)
+            train_filtered_X = train_RawX.apply(preProcessEMGSegment)
+            train_segment_X.append(EMG_segment(train_filtered_X))
+            
+            
+            
             
 
     
-    
+
     
     
         
            
-            
+ray.shutdown()           
             
 #             df_sum  = df.sum(axis=1)
 #             idx_Start, idx_End = detectMuscleActivity(df_sum)
