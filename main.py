@@ -98,9 +98,8 @@ def get_y_train(train_samples):
        
         y_train.append(code)
         
-
+           
     return y_train
-
 
 def decode_targets(y_train):
     
@@ -109,7 +108,24 @@ def decode_targets(y_train):
     encoded_Y = encoder.transform(y_train)
     target = np_utils.to_categorical(encoded_Y)
     
-    return target    
+    return target 
+
+    
+def get_xy_val(X_train, targets):            
+                
+    data_val = X_train.copy()
+    data_val['6'] = targets
+    
+    xy_val = data_val.sample(frac=1).reset_index(drop=True)
+    
+    
+    X_val = xy_val.iloc[:,0:6]  
+    y_val = decode_targets(xy_val['6'])
+    
+    
+    return X_val, y_val
+
+
 
 
 def butter_lowpass_filter(data, fs, order):
@@ -223,25 +239,19 @@ def findCentersClass(emg_filtered):
 
 
 def bestCenter_Class(train_segment_X):
-    num_samples = 25
-    counter = 0
-    train_aux = []
-    center_gesture = []
-    cent = []
     
-    for sample in train_segment_X:
-         counter = counter + 1
-         train_aux.append(sample)
-       
-         if counter == num_samples:
-             center_gesture = findCentersClass.remote(train_aux)
-             counter = 0
-             train_aux = []
+    g1 = train_segment_X[0:25]
+    g2 = train_segment_X[25:50]
+    g3 = train_segment_X[50:75]
+    g4 = train_segment_X[75:100]
+    g5 = train_segment_X[100:125]
+    g6 = train_segment_X[125:150]
+    
+    gen = [g1, g2, g3, g4, g5 ,g6]
+    
+    c = [findCentersClass.remote(g) for g in gen]
              
-    cent = ray.get(center_gesture)
-        
-    return cent
-
+    return ray.get(c)
 
 def featureExtraction(emg_filtered, centers):
 
@@ -508,8 +518,8 @@ def testing(x, centers, estimator):
 
 #%% Read user data
 test = collections.defaultdict(dict)
-num_cpus = psutil.cpu_count(logical=False)
-ray.init(num_cpus=num_cpus)
+
+ray.init(num_cpus = 8,  num_gpus=1)
 
 folderData = 'trainingJSON'
 files = []
@@ -531,12 +541,9 @@ for user_data in files:
         print(name_user)  
 
         train_samples = user['trainingSamples']
-        num_samples = 25
         num_gestures = 6
         train_segment_X = []
-        train_FilteredX_app = []
-        train_aux = []
-        counter = 0
+
 
 
         for sample in train_samples:
@@ -545,46 +552,36 @@ for user_data in files:
             train_filtered_X = train_RawX.apply(preProcessEMGSegment)
             train_segment_X.append(EMG_segment(train_filtered_X))
             
-            # counter = counter + 1
-            # train_aux.append(train_filtered_X)
-       
-            # # if counter == num_samples: 
-            # #     center_gesture = findCentersClass.remote(train_aux)
-            # #     counter = 0
-            # #     train_aux = []
+
+
+
+centers = bestCenter_Class(train_segment_X)
+
+#%%
+
+# features = featureExtraction(train_FilteredX_app, centers)     
+# X_train = preProcessFeatureVector(features)
+# y_train = decode_targets(get_y_train(train_samples))
+
+# X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
+
+
+
                 
-                
-                
-        cent0 = bestCenter_Class(train_segment_X)     
-        
-        # cent1 = ray.get(center_gesture)
+# ray.shutdown()   
             
+
             
-        
 
         
 
            
-ray.shutdown()           
+
+
+
+
             
-#             df_sum  = df.sum(axis=1)
-#             idx_Start, idx_End = detectMuscleActivity(df_sum)
-#             df_seg = df.iloc[idx_Start:idx_End]
-            
-#             train_aux.append(df_seg)
-#             train_FilteredX_app.append(df_seg)
-            
-#             counter = counter + 1
-            
-#             if counter == num_samples:
-#                 print('Gesturee')
-#                 center_gesture = findCentersClass.remote(train_aux)
-                
-                
-#                 counter = 0
-#                 train_aux = []
-            
-#         centers = ray.get(center_gesture)
+
         
         
         
