@@ -48,7 +48,6 @@ from collections import Counter
 import multiprocessing as mp
 from joblib import Parallel, delayed
 
-
 import ray
 
 #%% Functions
@@ -61,11 +60,6 @@ def get_x_train(user,sample):
     df = pd.DataFrame.from_dict(x) / 128
     
     return df
-
-
-    
-
-
 
 
 def get_y_train(train_samples):
@@ -203,7 +197,6 @@ def EMG_segment(train_filtered_X):
     return df_seg 
 
 
-
 @ray.remote
 def findCentersClass(emg_filtered):
     distances = []
@@ -228,6 +221,23 @@ def findCentersClass(emg_filtered):
     return center_idx
 
 
+def bestCenter_Class(train_filtered_X):
+    
+    g1 = train_filtered_X[0:25]
+    g2 = train_filtered_X[25:50]
+    g3 = train_filtered_X[50:75]
+    g4 = train_filtered_X[75:100]
+    g5 = train_filtered_X[100:125]
+    g6 = train_filtered_X[125:150]
+    
+    ges = [g1, g2, g3, g4, g5, g6]
+    
+    for gesture_class in ges:
+        center_gesture = findCentersClass.remote(gesture_class)
+         
+    centers = ray.get(center_gesture)
+    
+    return centers
 
 
 def featureExtraction(emg_filtered, centers):
@@ -496,7 +506,6 @@ def testing(x, centers, estimator):
 #%% Read user data
 test = collections.defaultdict(dict)
 ray.init()
-
 folderData = 'trainingJSON'
 files = []
 counter = 0
@@ -522,8 +531,7 @@ for user_data in files:
         train_segment_X = []
         train_FilteredX_app = []
         train_aux = []
-        centers = []
-        counter = 0
+
 
 
         for sample in train_samples:
@@ -533,14 +541,11 @@ for user_data in files:
             train_segment_X.append(EMG_segment(train_filtered_X))
             
             
-            
-            
-
-    
-
-    
-    
         
+        centers = bestCenter_Class(train_segment_X)        
+
+        
+
            
 ray.shutdown()           
             
