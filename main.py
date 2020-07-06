@@ -48,6 +48,7 @@ from collections import Counter
 import multiprocessing as mp
 from joblib import Parallel, delayed
 
+import psutil
 import ray
 
 #%% Functions
@@ -221,23 +222,25 @@ def findCentersClass(emg_filtered):
     return center_idx
 
 
-def bestCenter_Class(train_filtered_X):
+def bestCenter_Class(train_segment_X):
+    num_samples = 25
+    counter = 0
+    train_aux = []
+    center_gesture = []
+    cent = []
     
-    g1 = train_filtered_X[0:25]
-    g2 = train_filtered_X[25:50]
-    g3 = train_filtered_X[50:75]
-    g4 = train_filtered_X[75:100]
-    g5 = train_filtered_X[100:125]
-    g6 = train_filtered_X[125:150]
-    
-    ges = [g1, g2, g3, g4, g5, g6]
-    
-    for gesture_class in ges:
-        center_gesture = findCentersClass.remote(gesture_class)
-         
-    centers = ray.get(center_gesture)
-    
-    return centers
+    for sample in train_segment_X:
+         counter = counter + 1
+         train_aux.append(sample)
+       
+         if counter == num_samples:
+             center_gesture = findCentersClass.remote(train_aux)
+             counter = 0
+             train_aux = []
+             
+    cent = ray.get(center_gesture)
+        
+    return cent
 
 
 def featureExtraction(emg_filtered, centers):
@@ -505,7 +508,9 @@ def testing(x, centers, estimator):
 
 #%% Read user data
 test = collections.defaultdict(dict)
-ray.init()
+num_cpus = psutil.cpu_count(logical=False)
+ray.init(num_cpus=num_cpus)
+
 folderData = 'trainingJSON'
 files = []
 counter = 0
@@ -531,7 +536,7 @@ for user_data in files:
         train_segment_X = []
         train_FilteredX_app = []
         train_aux = []
-
+        counter = 0
 
 
         for sample in train_samples:
@@ -540,9 +545,22 @@ for user_data in files:
             train_filtered_X = train_RawX.apply(preProcessEMGSegment)
             train_segment_X.append(EMG_segment(train_filtered_X))
             
+            # counter = counter + 1
+            # train_aux.append(train_filtered_X)
+       
+            # # if counter == num_samples: 
+            # #     center_gesture = findCentersClass.remote(train_aux)
+            # #     counter = 0
+            # #     train_aux = []
+                
+                
+                
+        cent0 = bestCenter_Class(train_segment_X)     
+        
+        # cent1 = ray.get(center_gesture)
+            
             
         
-        centers = bestCenter_Class(train_segment_X)        
 
         
 
