@@ -264,8 +264,11 @@ def bestCenter_Class(train_segment_X):
              
     return ray.get(c)
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> parent of 4339dd4... Add ray to feature extraction
 def featureExtraction(emg_filtered, centers):
 
     dist_features = []
@@ -536,11 +539,20 @@ def recognition_results(results):
 
 #%% Read user data
 test = collections.defaultdict(dict)
+<<<<<<< HEAD
 ray.init(num_cpus = 8)
 num_gestures = 6
 folderData = 'trainingJSON'
 files = []
 
+=======
+
+ray.init(num_cpus = 8,  num_gpus=1)
+
+folderData = 'trainingJSON'
+files = []
+counter = 0
+>>>>>>> parent of 4339dd4... Add ray to feature extraction
 for root, dirs, files in os.walk(folderData):
      print('Dataset Ready !')
          
@@ -557,7 +569,42 @@ for user_data in files:
         print(name_user)  
 
         train_samples = user['trainingSamples']
+<<<<<<< HEAD
         train_segment_X = ray.get([get_x_train.remote(user,sample) for sample in train_samples]) 
+=======
+        num_gestures = 6
+        train_segment_X = []
+
+
+
+        for sample in train_samples:
+            
+            train_RawX = get_x_train(user,sample)
+            train_filtered_X = train_RawX.apply(preProcessEMGSegment)
+            train_segment_X.append(EMG_segment(train_filtered_X))
+            
+
+
+
+centers = bestCenter_Class(train_segment_X)
+
+#%%
+
+# features = featureExtraction(train_FilteredX_app, centers)     
+# X_train = preProcessFeatureVector(features)
+# y_train = decode_targets(get_y_train(train_samples))
+
+# X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
+
+
+
+                
+# ray.shutdown()   
+            
+
+            
+
+>>>>>>> parent of 4339dd4... Add ray to feature extraction
         
         centers = bestCenter_Class(train_segment_X)
         
