@@ -54,13 +54,16 @@ import ray
 #%% Functions
 
 
-            
+@ray.remote            
 def get_x_train(user,sample):
+    
     train_samples = user['trainingSamples']
     x = (train_samples[sample]['emg'])
     df = pd.DataFrame.from_dict(x) / 128
+    train_filtered_X = df.apply(preProcessEMGSegment)
+    train_segment_X = EMG_segment(train_filtered_X)
     
-    return df
+    return train_segment_X
 
 
             
@@ -133,7 +136,6 @@ def get_xy_val(X_train, targets):
     
     
     return X_val, y_val
-
 
 
 
@@ -263,7 +265,7 @@ def bestCenter_Class(train_segment_X):
     return ray.get(c)
 
 
-@ray.remote
+
 def featureExtraction(emg_filtered, centers):
 
     dist_features = []
@@ -455,58 +457,47 @@ def post_ProcessLabels(predicted_Seq):
 
 
 
-def code2gesture(vec_class):
-
-    vector = []    
-      
-    for code in vec_class:
+def code2gesture(code):
         
-        if code == 1:
-            
-            label = 'noGesture'
-            
-        elif code == 2:
-            
-            label = 'fist'
-                          
-        elif code == 3:
-            
-            label = 'waveIn'
-            
-        elif code == 4:
-            
-            label = 'waveOut'
+    if code == 1:
         
-        elif code == 5:
-            
-            label = 'open'            
+        label = 'noGesture'
+        
+    elif code == 2:
+        
+        label = 'fist'
+                      
+    elif code == 3:
+        
+        label = 'waveIn'
+        
+    elif code == 4:
+        
+        label = 'waveOut'
     
-    
-        elif code == 6:
-            
-            label = 'pinch'
-            
-            
-        vector.append(label)
+    elif code == 5:
         
-        
-    return vector
+        label = 'open'            
 
 
-def code2gesture_labels(vector_class_prev,vector_labels_prev):
+    elif code == 6:
+        
+        label = 'pinch'
+                       
+        
+    return label
+
+
+def code2gesture_labels(vector_labels_prev):
     
-    
-    v1 = code2gesture(vector_class_prev)
     v2 = []
     
     for window in vector_labels_prev:
         
-        vec_prev = code2gesture(window)
-        
+        vec_prev = code2gesture(window)        
         v2.append(vec_prev)
-        
-        
-    return v1, v2    
+    
+    return v2    
 
 
 def classify_gesture(test_RawX, centers, estimator):
@@ -518,15 +509,26 @@ def classify_gesture(test_RawX, centers, estimator):
     return predicted_label, predictedSeq, vec_time, estimatedTime
 
 
-def recognition_results(vector_class, vector_labels, vector_TimePoints, vector_ProcessingTimes):
+@ray.remote
+def testing_prediction(user,sample):
+    
+    test_RawX = get_x_test(user,sample) 
+    predicted_label, predictedSeq, vec_time, estimatedTime = classify_gesture(test_RawX, centers, estimator)
+    
+    return predicted_label, predictedSeq, vec_time, estimatedTime
+
+
+
+def recognition_results(results):
 
     d = collections.defaultdict(dict)
     
     for i in range(0,150):
-        d['idx_%s' %i]['class'] = vector_class[i]
-        d['idx_%s' %i]['vectorOfLabels'] = vector_labels[i]
-        d['idx_%s' %i]['vectorOfTimePoints'] = vector_TimePoints[i]
-        d['idx_%s' %i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]    
+                
+        d['idx_%s' %i]['class'] = code2gesture(results[i][0])
+        d['idx_%s' %i]['vectorOfLabels'] = code2gesture_labels(results[i][1])
+        d['idx_%s' %i]['vectorOfTimePoints'] = results[i][2]
+        d['idx_%s' %i]['vectorOfProcessingTimes']= results[i][3]    
        
     return d
 
@@ -534,15 +536,15 @@ def recognition_results(vector_class, vector_labels, vector_TimePoints, vector_P
 
 #%% Read user data
 test = collections.defaultdict(dict)
-ray.init(num_cpus = 8,  num_gpus=1)
-
+ray.init(num_cpus = 8)
+num_gestures = 6
 folderData = 'trainingJSON'
 files = []
+
 for root, dirs, files in os.walk(folderData):
      print('Dataset Ready !')
          
-         
-
+        
 #%% 
 
 
@@ -555,69 +557,35 @@ for user_data in files:
         print(name_user)  
 
         train_samples = user['trainingSamples']
-        num_gestures = 6
-        train_segment_X = []
-        vector_class_prev = []
-        vector_labels_prev = []
-        vector_TimePoints = []
-        vector_ProcessingTimes = []
+        train_segment_X = ray.get([get_x_train.remote(user,sample) for sample in train_samples]) 
+        
+        centers = bestCenter_Class(train_segment_X)
+        
+        features = featureExtraction(train_segment_X, centers)
+             
+        X_train = preProcessFeatureVector(features)
+        y_train = decode_targets(get_y_train(train_samples))
+        X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
+        estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
+                
+                
+        test_samples = user['testingSamples']     
+        results = ray.get([testing_prediction.remote(user,sample) for sample in test_samples])            
+        responses = recognition_results(results)
+        test[name_user]['testing'] = responses  
+
+ray.shutdown()   
+             
+           
+with open('responses.txt', 'w') as json_file:
+  json.dump(test, json_file)             
 
 
-        for sample in train_samples:
-            
-            train_RawX = get_x_train(user,sample)
-            train_filtered_X = train_RawX.apply(preProcessEMGSegment)
-            train_segment_X.append(EMG_segment(train_filtered_X))
-            
 
 
-#%%
-
-centers = bestCenter_Class(train_segment_X)
-
-
-ff = featureExtraction.remote(train_segment_X, centers)
-features = ray.get(ff)
-     
-X_train = preProcessFeatureVector(features)
-y_train = decode_targets(get_y_train(train_samples))
-X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
-estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
-        
-        
-test_samples = user['testingSamples']
-        
-        
-        
-def testing_prediction(user,sample):
-    
-    test_RawX = get_x_test(user,sample) 
-    results = classify_gesture.remote(test_RawX, centers, estimator)
-    predicted_label, predictedSeq, vec_time, estimatedTime =  ray.get(results)
-    
-        
-        # for sample in test_samples:
-            
-        #     test_RawX = get_x_test(user,sample)  
-        #     results = classify_gesture.remote(test_RawX, centers, estimator)
-        #     predicted_label, predictedSeq, vec_time, estimatedTime =  ray.get(results)
-              
-        #     vector_class_prev.append(predicted_label)
-        #     vector_labels_prev.append(predictedSeq)
-        #     vector_TimePoints.append(vec_time)  
-        #     vector_ProcessingTimes.append(estimatedTime) 
-            
-        #     vector_class, vector_labels = code2gesture_labels(vector_class_prev,vector_labels_prev)
-        
-        
-        # responses = recognition_results(vector_class, vector_labels, vector_TimePoints,vector_ProcessingTimes)
-            
-        # test[name_user]['testing'] = responses    
-    
 
                 
-# ray.shutdown()   
-            
+
 
             
 
@@ -630,189 +598,5 @@ def testing_prediction(user,sample):
 
             
 
-        
-        
-        
-        
-#         features = featureExtraction(train_FilteredX_app, centers)     
-#         X_train = preProcessFeatureVector(features)
-        
-#         targets = get_y_train(train_samples)
-#         y_train = decode_targets(targets)
-        
-        
-#         data_val = X_train.copy()
-#         data_val['6'] = targets
-        
-#         xy_val = data_val.sample(frac=1).reset_index(drop=True)
-        
-        
-#         X_val = xy_val.iloc[:,0:6]  
-#         y_val = decode_targets(xy_val['6'])
-        
-        
-#         estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
-
-
-#         vector_class_prev = []
-#         vector_TimePoints = []
-#         vector_labels_prev = []
-#         vector_ProcessingTimes = []
-        
-#         test_samples = user['testingSamples']
-               
-            
-#         for sample in test_samples:
-            
-#             x = (test_samples[sample]['emg'])
-#             df_test = pd.DataFrame.from_dict(x) / 128
-            
-#             [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
-#             predicted_label, t_post = post_ProcessLabels(predictedSeq)
-#             estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
-            
-#             vector_class_prev.append(predicted_label)
-#             vector_labels_prev.append(predictedSeq)
-#             vector_TimePoints.append(vec_time)  
-#             vector_ProcessingTimes.append(estimatedTime) 
-            
-#             vector_class, vector_labels = code2gesture_labels(vector_class_prev,vector_labels_prev)
-            
-
-#         d = collections.defaultdict(dict)
-        
-        
-#         for i in range(0,150):
-#             d['idx_%s' %i]['class'] = vector_class[i]
-#             d['idx_%s' %i]['vectorOfLabels'] = vector_labels[i]
-#             d['idx_%s' %i]['vectorOfTimePoints'] = vector_TimePoints[i]
-#             d['idx_%s' %i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]
-
-        
-#     test[name_user]['testing'] = d   
-
-
-# with open('responses.txt', 'w') as json_file:
-#   json.dump(test, json_file)   
-
-
-#%% Preprocess data
-
-# for user_data in files:
-#     file_selected = root + '/' + user_data 
-#     with open(file_selected) as file:
-#         user = json.load(file)   
-        
-#         name_user = user['userInfo']['name']
-#         print(name_user)  
-
-
-
-#         train_samples = user['trainingSamples']
-#         num_samples = 25
-#         num_gestures = 6
-#         train_FilteredX = []
-#         train_aux = []
-#         centers = []
-#         counter = 0
-
-
-#         for sample in train_samples:
-            
-#             x = (train_samples[sample]['emg'])
-#             df = pd.DataFrame.from_dict(x) / 128
-#             df = df.apply(preProcessEMGSegment)
-            
-#             df_sum  = df.sum(axis=1)
-#             idx_Start, idx_End = detectMuscleActivity(df_sum)
-#             df_seg = df.iloc[idx_Start:idx_End]
-            
-#             train_aux.append(df_seg)
-            
-#             counter = counter + 1
-            
-#             if counter == num_samples:
-#                 print('Gesturee')
-
-#                 center_gesture = findCentersClass(train_aux)
-#                 centers.append(center_gesture)
-#                 counter = 0
-#                 train_aux = []
-            
-#             train_FilteredX.append(df_seg)
-            
-            
-#         features = featureExtraction(train_FilteredX, centers)
-        
-#         X_train = preProcessFeatureVector(features)
-
-#         targets = get_y_train(train_samples)
-#         y_train = decode_targets(targets)
-        
-        
-#         data_val = X_train.copy()
-#         data_val['6'] = targets
-        
-#         xy_val = data_val.sample(frac=1).reset_index(drop=True)
-        
-        
-#         X_val = xy_val.iloc[:,0:6]  
-#         y_val = decode_targets(xy_val['6'])
-        
-        
-#         estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
-
-
-
-#         vector_class_prev = []
-#         vector_TimePoints = []
-#         vector_labels_prev = []
-#         vector_ProcessingTimes = []
-        
-#         test_samples = user['testingSamples']
-        
-#         for sample in test_samples:
-            
-#             x = (test_samples[sample]['emg'])
-#             df_test = pd.DataFrame.from_dict(x) / 128
-            
-#             [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
-#             predicted_label, t_post = post_ProcessLabels(predictedSeq)
-#             estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
-            
-#             vector_class_prev.append(predicted_label)
-#             vector_labels_prev.append(predictedSeq)
-#             vector_TimePoints.append(vec_time)  
-#             vector_ProcessingTimes.append(estimatedTime) 
-            
-#             vector_class, vector_labels = code2gesture_labels(vector_class_prev,vector_labels_prev)
-            
-#             print(sample)
-    
-                   
-# #%%
-
-
-#         d = collections.defaultdict(dict)
-        
-        
-#         for i in range(0,150):
-#             d['idx_%s' %i]['class'] = vector_class[i]
-#             d['idx_%s' %i]['vectorOfLabels'] = vector_labels[i]
-#             d['idx_%s' %i]['vectorOfTimePoints'] = vector_TimePoints[i]
-#             d['idx_%s' %i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]
-
-        
-#     test[name_user]['testing'] = d   
-
-
-# with open('responses.txt', 'w') as json_file:
-#   json.dump(test, json_file)   
-
-
-# #%%
-
-
-# print("Number of cpu : ", mp.cpu_count())
 
 
