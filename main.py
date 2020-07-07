@@ -63,6 +63,15 @@ def get_x_train(user,sample):
     return df
 
 
+            
+def get_x_test(user,sample):
+    test_samples = user['testingSamples']
+    x = (test_samples[sample]['emg'])
+    df = pd.DataFrame.from_dict(x) / 128
+    
+    return df
+
+
 def get_y_train(train_samples):
     
     y_train = []
@@ -355,7 +364,8 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_filt = time.time() - tStart
             
             tStart = time.time()
-            featVector = featureExtraction([window_emg1], centers)
+            fv = featureExtraction.remote([window_emg1], centers)
+            featVector  = ray.get(fv)
             featVectorP = preProcessFeatureVector(featVector)
             t_featExtra =  time.time() - tStart
             
@@ -499,22 +509,26 @@ def code2gesture_labels(vector_class_prev,vector_labels_prev):
     return v1, v2    
 
 
-
-def testing(x, centers, estimator):
+def classify_gesture(test_RawX, centers, estimator):
     
-    
-    df_test = pd.DataFrame.from_dict(x) / 128
-    
-    [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(df_test, centers, estimator)
+    [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(test_RawX, centers, estimator)
     predicted_label, t_post = post_ProcessLabels(predictedSeq)
     estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
-    
-    vector_ProcessingTimes.append(estimatedTime) 
-    
-    vector_class, vector_labels = code2gesture_labels(predicted_label, predictedSeq)
-    
-    return vector_class, vector_labels, estimatedTime, time_seq
+       
+    return predicted_label, predictedSeq, vec_time, estimatedTime
 
+
+def recognition_results(vector_class, vector_labels, vector_TimePoints, vector_ProcessingTimes):
+
+    d = collections.defaultdict(dict)
+    
+    for i in range(0,150):
+        d['idx_%s' %i]['class'] = vector_class[i]
+        d['idx_%s' %i]['vectorOfLabels'] = vector_labels[i]
+        d['idx_%s' %i]['vectorOfTimePoints'] = vector_TimePoints[i]
+        d['idx_%s' %i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]    
+       
+    return d
 
 
 
@@ -543,7 +557,10 @@ for user_data in files:
         train_samples = user['trainingSamples']
         num_gestures = 6
         train_segment_X = []
-
+        vector_class_prev = []
+        vector_labels_prev = []
+        vector_TimePoints = []
+        vector_ProcessingTimes = []
 
 
         for sample in train_samples:
@@ -554,10 +571,10 @@ for user_data in files:
             
 
 
+#%%
 
 centers = bestCenter_Class(train_segment_X)
 
-#%%
 
 ff = featureExtraction.remote(train_segment_X, centers)
 features = ray.get(ff)
@@ -566,8 +583,37 @@ X_train = preProcessFeatureVector(features)
 y_train = decode_targets(get_y_train(train_samples))
 X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
 estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
-
-
+        
+        
+test_samples = user['testingSamples']
+        
+        
+        
+def testing_prediction(user,sample):
+    
+    test_RawX = get_x_test(user,sample) 
+    results = classify_gesture.remote(test_RawX, centers, estimator)
+    predicted_label, predictedSeq, vec_time, estimatedTime =  ray.get(results)
+    
+        
+        # for sample in test_samples:
+            
+        #     test_RawX = get_x_test(user,sample)  
+        #     results = classify_gesture.remote(test_RawX, centers, estimator)
+        #     predicted_label, predictedSeq, vec_time, estimatedTime =  ray.get(results)
+              
+        #     vector_class_prev.append(predicted_label)
+        #     vector_labels_prev.append(predictedSeq)
+        #     vector_TimePoints.append(vec_time)  
+        #     vector_ProcessingTimes.append(estimatedTime) 
+            
+        #     vector_class, vector_labels = code2gesture_labels(vector_class_prev,vector_labels_prev)
+        
+        
+        # responses = recognition_results(vector_class, vector_labels, vector_TimePoints,vector_ProcessingTimes)
+            
+        # test[name_user]['testing'] = responses    
+    
 
                 
 # ray.shutdown()   
