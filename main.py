@@ -253,6 +253,8 @@ def bestCenter_Class(train_segment_X):
              
     return ray.get(c)
 
+
+@ray.remote
 def featureExtraction(emg_filtered, centers):
 
     dist_features = []
@@ -518,12 +520,10 @@ def testing(x, centers, estimator):
 
 #%% Read user data
 test = collections.defaultdict(dict)
-
 ray.init(num_cpus = 8,  num_gpus=1)
 
 folderData = 'trainingJSON'
 files = []
-counter = 0
 for root, dirs, files in os.walk(folderData):
      print('Dataset Ready !')
          
@@ -559,11 +559,13 @@ centers = bestCenter_Class(train_segment_X)
 
 #%%
 
-# features = featureExtraction(train_FilteredX_app, centers)     
-# X_train = preProcessFeatureVector(features)
-# y_train = decode_targets(get_y_train(train_samples))
-
-# X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
+ff = featureExtraction.remote(train_segment_X, centers)
+features = ray.get(ff)
+     
+X_train = preProcessFeatureVector(features)
+y_train = decode_targets(get_y_train(train_samples))
+X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
+estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
 
 
 
