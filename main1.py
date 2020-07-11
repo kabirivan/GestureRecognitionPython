@@ -506,13 +506,13 @@ for user_data in files:
                 train_aux = []
             
             
-        # pool = mp.Pool(15)
-        # centers = pool.map(findCentersClass, [ges for ges in train_FilteredX])      
-        # features = featureExtraction(train_FilteredX_app, centers)
-        
-        centers = Parallel(n_jobs = 6)(delayed(findCentersClass)(ges) for ges in train_FilteredX)
-           
+        pool = mp.Pool(6)
+        centers = pool.map(findCentersClass, [ges for ges in train_FilteredX])      
         features = featureExtraction(train_FilteredX_app, centers)
+        
+        # centers = Parallel(n_jobs = 6)(delayed(findCentersClass)(ges) for ges in train_FilteredX)
+           
+        # features = featureExtraction(train_FilteredX_app, centers)
         X_train = preProcessFeatureVector(features)
         
         targets = get_y_train(train_samples)
