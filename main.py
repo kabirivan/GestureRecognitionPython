@@ -53,14 +53,16 @@ import ray
 
 #%% Functions
 
-
-@ray.remote            
+        
 def get_x_train(user,sample):
-    
+    # This function reads the time series(x) of the user (Training Sample)
     train_samples = user['trainingSamples']
     x = (train_samples[sample]['emg'])
+    # Divide to 128 for having a signal between -1 and 1
     df = pd.DataFrame.from_dict(x) / 128
+    # Apply filter
     train_filtered_X = df.apply(preProcessEMGSegment)
+    # Segment the filtered EMG signal
     train_segment_X = EMG_segment(train_filtered_X)
     
     return train_segment_X
@@ -68,6 +70,7 @@ def get_x_train(user,sample):
 
             
 def get_x_test(user,sample):
+    # This function reads the time series(x) of the user (Testing Sample)
     test_samples = user['testingSamples']
     x = (test_samples[sample]['emg'])
     df = pd.DataFrame.from_dict(x) / 128
@@ -76,7 +79,7 @@ def get_x_test(user,sample):
 
 
 def get_y_train(train_samples):
-    
+    # Changes a gesture into a code
     y_train = []
     
     for sample in train_samples:
@@ -106,15 +109,14 @@ def get_y_train(train_samples):
         elif y == 'pinch':
             
             code = 6
-                
-       
+                      
         y_train.append(code)
         
            
     return y_train
 
 def decode_targets(y_train):
-    
+    # Encode targets to train the Neural Network
     encoder = LabelEncoder()
     encoder.fit(y_train)
     encoded_Y = encoder.transform(y_train)
@@ -124,7 +126,8 @@ def decode_targets(y_train):
 
     
 def get_xy_val(X_train, targets):            
-                
+    
+    # Get validation data to train Neural Network            
     data_val = X_train.copy()
     data_val['6'] = targets
     
@@ -147,7 +150,7 @@ def butter_lowpass_filter(data, fs, order):
 
 
 def preProcessEMGSegment(EMGsegment_in):
-    
+    # This function to apply a filter
     EMG = max(EMGsegment_in)
     
     if EMG > 1:
@@ -163,14 +166,21 @@ def preProcessEMGSegment(EMGsegment_in):
 
 
 def detectMuscleActivity(emg_sum):
+    
+    # This function segments in a EMG the region corresponding to a muscle
+    # contraction. The indices idxStart and idxEnd correspond to the begining
+    # and the end of such a region
 
+    # Sampling frequency of the EMG
     fs = 200
-    minWindowLength_Segmentation =  100
-    hammingWdw_Length = np.hamming(25)
-    numSamples_lapBetweenWdws = 10
-    threshForSum_AlongFreqInSpec = 0.857
+    minWindowLength_Segmentation =  100 # Minimum length of the segmented region
+    hammingWdw_Length = np.hamming(25) # Window length
+    numSamples_lapBetweenWdws = 10 # Overlap between 2 consecutive windows
+    threshForSum_AlongFreqInSpec = 0.856
 
     [s, f, t, im] = plt.specgram(emg_sum, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws, mode = 'magnitude', pad_to = 50)  
+    
+    # Summing the spectrogram along the frequencies
     sumAlongFreq = [sum(x) for x in zip(*s)]
 
     greaterThanThresh = []
@@ -193,7 +203,7 @@ def detectMuscleActivity(emg_sum):
     idxNonZero = findNumber(1,x)
     numIdxNonZero = len(idxNonZero)
     idx_Samples = np.floor(fs*t)
-
+    # Finding the indices of the start and the end of a muscle contraction
     if numIdxNonZero == 0:
         idx_Start = 1
         idx_End = len(emg_sum)
@@ -203,7 +213,7 @@ def detectMuscleActivity(emg_sum):
     else:
         idx_Start = idx_Samples[idxNonZero[0]]
         idx_End = idx_Samples[idxNonZero[-1]-1]
-
+    # Adding a head and a tail to the segmentation
     numExtraSamples = 25
     idx_Start = max(1,idx_Start - numExtraSamples)
     idx_End = min(len(emg_sum), idx_End + numExtraSamples)
@@ -217,6 +227,8 @@ def detectMuscleActivity(emg_sum):
 
 
 def EMG_segment(train_filtered_X):
+    # This function return a segment with corresponding to a muscle
+    # contraction
     
     df_sum  = train_filtered_X.sum(axis=1)
     idx_Start, idx_End = detectMuscleActivity(df_sum)
@@ -227,6 +239,11 @@ def EMG_segment(train_filtered_X):
 
 @ray.remote
 def findCentersClass(emg_filtered):
+    # This function returns a set of time series called centers. The ith
+    # time series of centers, centers{i}, is the center of the cluster of time 
+    # series from the set timeSeries that belong to the ith class. For finding
+    # the center of each class, the DTW distance is used.  
+
     distances = []
     sample = 25
     column = np.arange(0,sample)
@@ -251,6 +268,9 @@ def findCentersClass(emg_filtered):
 
 def bestCenter_Class(train_segment_X):
     
+    # This function returns a set of time series called centers
+    # for each gesture class
+    
     g1 = train_segment_X[0:25]
     g2 = train_segment_X[25:50]
     g3 = train_segment_X[50:75]
@@ -264,12 +284,13 @@ def bestCenter_Class(train_segment_X):
              
     return ray.get(c)
 
-<<<<<<< HEAD
 
-
-=======
->>>>>>> parent of 4339dd4... Add ray to feature extraction
 def featureExtraction(emg_filtered, centers):
+    # This function computes a feature vector for each element from the set
+    # timeSeries. The dimension of this feature vector depends on the number of 
+    # time series of the set centers. The value of the jth feature of the ith
+    # vector in dataX corresponds to the DTW distance between the signals 
+    # timeSeries{i} and centers{j}.  
 
     dist_features = []
     
@@ -290,6 +311,8 @@ def featureExtraction(emg_filtered, centers):
 
 
 def preProcessFeatureVector(dataX_in):
+    # This function preprocess each feature vector of the set dataX_in. Each
+    # row of dataX_in is a fetaure vector and each column is a featur
     
     dataX_mean = dataX_in.mean(axis = 1)
     dataX_std = dataX_in.std(axis = 1)   
@@ -301,6 +324,10 @@ def preProcessFeatureVector(dataX_in):
 
 
 def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
+    # This function trains an  artificial feed-forward neural networks 
+    # Cost lost: categorical cross entropy
+    # Hidden Layer: Tanh
+    # Output Layer: softmax
     
     classifier = Sequential()
     
@@ -308,12 +335,13 @@ def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'tanh'))
     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'softmax'))
     classifier.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1300, validation_data = (X_test, y_test),verbose = 0 )
+    classifier.fit(X_train, y_train, batch_size = 150, epochs = 1500, validation_data = (X_test, y_test), verbose = 0 )
     
     return classifier
 
 
 def majorite_vote(data, before, after):
+    # This function is used to apply pos-processing based on majority vote
     
     votes =[0,0,0,0,0,0]
     class_maj = []
@@ -334,6 +362,13 @@ def majorite_vote(data, before, after):
 
 
 def classifyEMG_SegmentationNN(dataX_test, centers, model):
+
+    # This function applies a hand gesture recognition model based on artificial
+    # feed-forward neural networks and automatic feature extraction to a set of
+    # EMGs conatined in the set test_X. The actual label of each EMG in test_X
+    # is in the set test_Y. The structure nnModel contains the trained neural
+    # network     
+    
     sc = StandardScaler()
     window_length = 600
     stride_length = 30
@@ -369,8 +404,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_filt = time.time() - tStart
             
             tStart = time.time()
-            fv = featureExtraction.remote([window_emg1], centers)
-            featVector  = ray.get(fv)
+            featVector = featureExtraction([window_emg1], centers)
             featVectorP = preProcessFeatureVector(featVector)
             t_featExtra =  time.time() - tStart
             
@@ -402,7 +436,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         vecTime.append(start_point+(window_length/2)+50)
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
     
-    pred_seq = majorite_vote(predLabel_seq, 4, 4)    
+    pred_seq = majorite_vote(predLabel_seq, 5, 5)    
         
     return  pred_seq, vecTime, timeSeq
 
@@ -418,6 +452,11 @@ def unique(list1):
 
 
 def post_ProcessLabels(predicted_Seq):
+    
+    # This function post-processes the sequence of labels returned by a
+    # classifier. Each row of predictedSeq is a sequence of 
+    # labels predicted by a different classifier for the jth example belonging
+    # to the ith actual class.
     
     time_post = []
     predictions = predicted_Seq.copy()
@@ -461,6 +500,9 @@ def post_ProcessLabels(predicted_Seq):
 
 
 def code2gesture(code):
+    
+    # This function returns the gesture name from code
+    
         
     if code == 1:
         
@@ -493,6 +535,7 @@ def code2gesture(code):
 
 def code2gesture_labels(vector_labels_prev):
     
+    # This function returns a prediction vector with gesture names
     v2 = []
     
     for window in vector_labels_prev:
@@ -505,15 +548,21 @@ def code2gesture_labels(vector_labels_prev):
 
 def classify_gesture(test_RawX, centers, estimator):
     
+    # This function applies a hand gesture recognition model based on artificial
+    # feed-forward neural networks and automatic feature extraction to a set of
+    # EMGs conatined in the set test_RawX
+    
     [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(test_RawX, centers, estimator)
     predicted_label, t_post = post_ProcessLabels(predictedSeq)
+    
+    # Computing the time of processing
     estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
        
     return predicted_label, predictedSeq, vec_time, estimatedTime
 
-
 @ray.remote
 def testing_prediction(user,sample):
+    
     
     test_RawX = get_x_test(user,sample) 
     predicted_label, predictedSeq, vec_time, estimatedTime = classify_gesture(test_RawX, centers, estimator)
@@ -523,6 +572,8 @@ def testing_prediction(user,sample):
 
 
 def recognition_results(results):
+    
+     # This function save the responses of each user into a dictionary
 
     d = collections.defaultdict(dict)
     
@@ -538,94 +589,66 @@ def recognition_results(results):
 
 
 #%% Read user data
-test = collections.defaultdict(dict)
-<<<<<<< HEAD
+responses = collections.defaultdict(dict)
 ray.init(num_cpus = 8)
 num_gestures = 6
 folderData = 'trainingJSON'
 files = []
 
-=======
 
-ray.init(num_cpus = 8,  num_gpus=1)
 
-folderData = 'trainingJSON'
-files = []
-counter = 0
->>>>>>> parent of 4339dd4... Add ray to feature extraction
 for root, dirs, files in os.walk(folderData):
      print('Dataset Ready !')
          
-        
-#%% 
-
-
+     
 for user_data in files:
     file_selected = root + '/' + user_data 
     with open(file_selected) as file:
-        user = json.load(file)   
-        
+        user = json.load(file)      
         name_user = user['userInfo']['name']
         print(name_user)  
 
+        # Reading the training samples
         train_samples = user['trainingSamples']
-<<<<<<< HEAD
-        train_segment_X = ray.get([get_x_train.remote(user,sample) for sample in train_samples]) 
-=======
-        num_gestures = 6
-        train_segment_X = []
-
-
-
-        for sample in train_samples:
-            
-            train_RawX = get_x_train(user,sample)
-            train_filtered_X = train_RawX.apply(preProcessEMGSegment)
-            train_segment_X.append(EMG_segment(train_filtered_X))
-            
-
-
-
-centers = bestCenter_Class(train_segment_X)
-
-#%%
-
-# features = featureExtraction(train_FilteredX_app, centers)     
-# X_train = preProcessFeatureVector(features)
-# y_train = decode_targets(get_y_train(train_samples))
-
-# X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
-
-
-
-                
-# ray.shutdown()   
-            
-
-            
-
->>>>>>> parent of 4339dd4... Add ray to feature extraction
         
+        # Preprocessing
+        train_segment_X = [get_x_train(user,sample) for sample in train_samples]  
+        
+        # Finding the EMG that is the center of each class
         centers = bestCenter_Class(train_segment_X)
         
+        # Feature extraction by computing the DTW distance between each training
+        # example and the center of each cluster     
         features = featureExtraction(train_segment_X, centers)
-             
+        
+        # Preprocessing the feature vectors
         X_train = preProcessFeatureVector(features)
+        
+        # Training the feed-forward NN
         y_train = decode_targets(get_y_train(train_samples))
-        X_val, y_val = get_xy_val(X_train, get_y_train(train_samples))  
+        X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
+        
         estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
-                
-                
-        test_samples = user['testingSamples']     
-        results = ray.get([testing_prediction.remote(user,sample) for sample in test_samples])            
-        responses = recognition_results(results)
-        test[name_user]['testing'] = responses  
 
-ray.shutdown()   
-             
+        # Reading the testing samples    
+        test_samples = user['testingSamples']  
+        
+        # Concatenating the predictions of all the users for computing the
+        # errors
+        results = ray.get([testing_prediction.remote(user,sample) for sample in test_samples])         
+
+
+    responses[name_user]['testing'] = recognition_results(results)
+
+ray.shutdown()
            
-with open('responses.txt', 'w') as json_file:
-  json.dump(test, json_file)             
+with open('responses30.json', 'w') as json_file:
+  json.dump(responses, json_file)             
+
+
+
+
+             
 
 
 
