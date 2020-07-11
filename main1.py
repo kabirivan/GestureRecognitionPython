@@ -569,11 +569,11 @@ for user_data in files:
             d['idx_%s' %i]['vectorOfProcessingTimes']= vector_ProcessingTimes[i]
 
         
-#     test[name_user]['testing'] = d   
+    test[name_user]['testing'] = d   
 
 
-# with open('responses.txt', 'w') as json_file:
-#   json.dump(test, json_file)   
+with open('responses.txt', 'w') as json_file:
+  json.dump(test, json_file)   
 
 
 #%% Preprocess data
