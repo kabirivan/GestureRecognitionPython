@@ -49,6 +49,9 @@ import multiprocessing as mp
 from joblib import Parallel, delayed
 
 
+import psutil
+import ray
+
 #%% Functions
 
 def get_y_train(train_samples):
@@ -178,6 +181,7 @@ def detectMuscleActivity(emg_sum):
 
 
 
+@ray.remote
 def findCentersClass(emg_filtered):
     distances = []
     sample = 25
@@ -455,7 +459,7 @@ def code2gesture_labels(vector_class_prev,vector_labels_prev):
 
 #%% Read user data
 test = collections.defaultdict(dict)
-
+ray.init(num_cpus = 8)
 folderData = 'trainingJSON'
 files = []
 counter = 0
@@ -483,7 +487,7 @@ for user_data in files:
         train_aux = []
         centers = []
         counter = 0
-
+        
 
         for sample in train_samples:
             
@@ -506,8 +510,11 @@ for user_data in files:
                 train_aux = []
             
             
-        pool = mp.Pool(6)
-        centers = pool.map(findCentersClass, [ges for ges in train_FilteredX])      
+        # pool = mp.Pool(6)
+        # centers = pool.map(findCentersClass, [ges for ges in train_FilteredX])      
+        
+        
+        centers =ray.get([findCentersClass.remote(ges) for ges in train_FilteredX]) 
         features = featureExtraction(train_FilteredX_app, centers)
         
         # centers = Parallel(n_jobs = 6)(delayed(findCentersClass)(ges) for ges in train_FilteredX)

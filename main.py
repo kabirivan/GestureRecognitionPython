@@ -176,7 +176,7 @@ def detectMuscleActivity(emg_sum):
     minWindowLength_Segmentation =  100 # Minimum length of the segmented region
     hammingWdw_Length = np.hamming(25) # Window length
     numSamples_lapBetweenWdws = 10 # Overlap between 2 consecutive windows
-    threshForSum_AlongFreqInSpec = 0.856
+    threshForSum_AlongFreqInSpec = 0.858
 
     [s, f, t, im] = plt.specgram(emg_sum, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws, mode = 'magnitude', pad_to = 50)  
     
@@ -237,7 +237,7 @@ def EMG_segment(train_filtered_X):
     return df_seg 
 
 
-@ray.remote
+
 def findCentersClass(emg_filtered):
     # This function returns a set of time series called centers. The ith
     # time series of centers, centers{i}, is the center of the cluster of time 
@@ -280,9 +280,9 @@ def bestCenter_Class(train_segment_X):
     
     gen = [g1, g2, g3, g4, g5 ,g6]
     
-    c = [findCentersClass.remote(g) for g in gen]
+    c = [findCentersClass(g) for g in gen]
              
-    return ray.get(c)
+    return c
 
 
 def featureExtraction(emg_filtered, centers):
@@ -436,7 +436,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         vecTime.append(start_point+(window_length/2)+50)
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
     
-    pred_seq = majorite_vote(predLabel_seq, 5, 5)    
+    pred_seq = majorite_vote(predLabel_seq, 4, 4)    
         
     return  pred_seq, vecTime, timeSeq
 
@@ -560,7 +560,7 @@ def classify_gesture(test_RawX, centers, estimator):
        
     return predicted_label, predictedSeq, vec_time, estimatedTime
 
-@ray.remote
+
 def testing_prediction(user,sample):
     
     
@@ -590,7 +590,6 @@ def recognition_results(results):
 
 #%% Read user data
 responses = collections.defaultdict(dict)
-ray.init(num_cpus = 8)
 num_gestures = 6
 folderData = 'trainingJSON'
 files = []
@@ -635,14 +634,14 @@ for user_data in files:
         
         # Concatenating the predictions of all the users for computing the
         # errors
-        results = ray.get([testing_prediction.remote(user,sample) for sample in test_samples])         
+        results = ([testing_prediction(user,sample) for sample in test_samples])         
 
 
     responses[name_user]['testing'] = recognition_results(results)
 
-ray.shutdown()
+
            
-with open('responses30.json', 'w') as json_file:
+with open('responses5.json', 'w') as json_file:
   json.dump(responses, json_file)             
 
 
