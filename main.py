@@ -176,7 +176,7 @@ def detectMuscleActivity(emg_sum):
     minWindowLength_Segmentation =  100 # Minimum length of the segmented region
     hammingWdw_Length = np.hamming(25) # Window length
     numSamples_lapBetweenWdws = 10 # Overlap between 2 consecutive windows
-    threshForSum_AlongFreqInSpec = 0.858
+    threshForSum_AlongFreqInSpec = 0.86
 
     [s, f, t, im] = plt.specgram(emg_sum, NFFT = 25, Fs = fs, window = hammingWdw_Length, noverlap = numSamples_lapBetweenWdws, mode = 'magnitude', pad_to = 50)  
     
