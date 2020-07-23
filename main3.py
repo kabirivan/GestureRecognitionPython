@@ -12,10 +12,9 @@ import json
 import os
 import itertools
 import pandas as pd
-from scipy import signal
 
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
+
+
 from sklearn.manifold import TSNE
 import seaborn as sns
 
@@ -49,7 +48,9 @@ import psutil
 import ray
 
 
+from readDataset import *
 from preProcessing import *
+from featureExtraction import *
 
 
 
@@ -81,36 +82,6 @@ def get_x_test(user,sample):
     return df
 
 
-def get_y_train(train_samples):
-    # Changes a gesture into a code
-    y_train = []
-    
-    for sample in train_samples:
-        
-        y = train_samples[sample]['gestureName']
-        
-        if y == 'noGesture':            
-            code = 1
-            
-        elif y == 'fist':    
-            code = 2
-            
-        elif y == 'waveIn':       
-            code = 3
-            
-        elif y == 'waveOut':        
-            code = 4
-            
-        elif y == 'open':        
-            code = 5
-            
-        elif y == 'pinch':       
-            code = 6
-                      
-        y_train.append(code)
-        
-           
-    return y_train
 
 def decode_targets(y_train):
     # Encode targets to train the Neural Network
@@ -139,36 +110,6 @@ def get_xy_val(X_train, targets):
 
 
 
-
-
-def findCentersClass(emg_filtered):
-    # This function returns a set of time series called centers. The ith
-    # time series of centers, centers{i}, is the center of the cluster of time 
-    # series from the set timeSeries that belong to the ith class. For finding
-    # the center of each class, the DTW distance is used.  
-
-    distances = []
-    sample = 25
-    column = np.arange(0,sample)
-    mtx_distances = pd.DataFrame(columns = column)
-    mtx_distances = mtx_distances.fillna(0) # with 0s rather than NaNs
-    
-    
-    for sample_i in emg_filtered:
-        for sample_j in emg_filtered:   
-            dist, dummy = fastdtw(sample_i, sample_j, dist = euclidean)
-            distances.append(dist)
-            
-        df_length = len(mtx_distances)
-        mtx_distances.loc[df_length] = distances 
-        distances= []  
-    vector_dist = mtx_distances.sum(axis=0)
-    idx = vector_dist.idxmin()
-    center_idx = emg_filtered[int(idx)]
-    
-    return center_idx
-
-
 def bestCenter_Class(train_segment_X):
     
     # This function returns a set of time series called centers
@@ -187,8 +128,7 @@ def bestCenter_Class(train_segment_X):
              
     return c
 
-
-def featureExtraction(emg_filtered, centers):
+def featureExtractionf(emg_filtered, centers):
     # This function computes a feature vector for each element from the set
     # timeSeries. The dimension of this feature vector depends on the number of 
     # time series of the set centers. The value of the jth feature of the ith
@@ -306,7 +246,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
             t_filt = time.time() - tStart
             
             tStart = time.time()
-            featVector = featureExtraction([window_emg1], centers)
+            featVector = featureExtractionf([window_emg1], centers)
             featVectorP = preProcessFeatureVector(featVector)
             t_featExtra =  time.time() - tStart
             
@@ -504,18 +444,18 @@ for user_data in files:
         train_segment_X = [get_x_train(user,sample) for sample in train_samples]  
         
         # Finding the EMG that is the center of each class
-        # centers = bestCenter_Class(train_segment_X)
+        centers = bestCenter_Class(train_segment_X)
         
         # Feature extraction by computing the DTW distance between each training
         # example and the center of each cluster     
-        # features = featureExtraction(train_segment_X, centers)
+        features = featureExtractionf(train_segment_X, centers)
         
         # Preprocessing the feature vectors
-        # X_train = preProcessFeatureVector(features)
+        X_train = preProcessFeatureVector(features)
         
         # Training the feed-forward NN
-        # y_train = decode_targets(get_y_train(train_samples))
-        # X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
+        y_train = decode_targets(get_y_train(train_samples))
+        X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
         
         # estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
 
