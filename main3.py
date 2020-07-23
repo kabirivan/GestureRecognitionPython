@@ -18,7 +18,6 @@ import pandas as pd
 from sklearn.manifold import TSNE
 import seaborn as sns
 
-import time
 
 import keras
 from keras.models import Sequential
@@ -28,14 +27,10 @@ from keras.utils import np_utils
 from keras.optimizers import Adam, SGD
 
 
-import matplotlib.font_manager as fm
-from matplotlib.collections import QuadMesh
-
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 
 
-import random
 from sklearn.preprocessing import StandardScaler
 
 import collections
@@ -44,13 +39,12 @@ from collections import Counter
 import multiprocessing as mp
 from joblib import Parallel, delayed
 
-import psutil
-import ray
 
 
 from readDataset import *
 from preProcessing import *
 from featureExtraction import *
+from classificationEMG import *
 
 
 
@@ -128,43 +122,19 @@ def bestCenter_Class(train_segment_X):
              
     return c
 
-def featureExtractionf(emg_filtered, centers):
-    # This function computes a feature vector for each element from the set
-    # timeSeries. The dimension of this feature vector depends on the number of 
-    # time series of the set centers. The value of the jth feature of the ith
-    # vector in dataX corresponds to the DTW distance between the signals 
-    # timeSeries{i} and centers{j}.  
 
-    dist_features = []
+
+def getFeatureExtraction(emg_filtered, centers):
     
-    column = np.arange(0,len(centers))
-    dataX = pd.DataFrame(columns = column)
-    dataX = dataX.fillna(0)
+    features = featureExtractionf(emg_filtered, centers)
     
-    for rep in emg_filtered:
-        for middle in centers:
-            dist, dummy = fastdtw(rep, middle, dist = euclidean) 
-            dist_features.append(dist)
-        
-        dataX_length = len(dataX)
-        dataX.loc[dataX_length] = dist_features
-        dist_features = [] 
+    dataX = preProcessFeatureVector(features)
     
     return dataX
-
-
-def preProcessFeatureVector(dataX_in):
-    # This function preprocess each feature vector of the set dataX_in. Each
-    # row of dataX_in is a fetaure vector and each column is a featur
     
-    dataX_mean = dataX_in.mean(axis = 1)
-    dataX_std = dataX_in.std(axis = 1)   
-    dataX_mean6 =  pd.concat([dataX_mean]*num_gestures, axis = 1)
-    dataX_std6 =  pd.concat([dataX_std]*num_gestures, axis = 1)   
-    dataX6 = (dataX_in - dataX_mean6)/dataX_std6
     
-    return dataX6
-
+    
+    
 
 def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     # This function trains an  artificial feed-forward neural networks 
@@ -183,220 +153,32 @@ def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
     return classifier
 
 
-def majorite_vote(data, before, after):
-    # This function is used to apply pos-processing based on majority vote
-    
-    votes =[0,0,0,0,0,0]
-    class_maj = []
-        
-    for j in range(0,len(data)):
-        wind_mv = data[max(0,(j-before)):min(len(data),(j+after))]
-        
-        for k in range(0, 6):
-            a = [1 if i == k+1 else 0 for i in wind_mv]  
-            votes[k] = sum(a)
-            
-        findNumber = lambda x, xs: [i for (y, i) in zip(xs, range(len(xs))) if x == y]
-        idx_label = findNumber(max(votes),votes)
-        class_maj.append( idx_label[0] + 1)
-        
-    
-    return class_maj
 
-
-def classifyEMG_SegmentationNN(dataX_test, centers, model):
-    # This function applies a hand gesture recognition model based on artificial
-    # feed-forward neural networks and automatic feature extraction to a set of
-    # EMGs conatined in the set test_X. The actual label of each EMG in test_X
-    # is in the set test_Y. The structure nnModel contains the trained neural
-    # network     
+# def classify_gesture(test_RawX, centers, estimator): 
+#     # This function applies a hand gesture recognition model based on artificial
+#     # feed-forward neural networks and automatic feature extraction to a set of
+#     # EMGs conatined in the set test_RawX
     
-    sc = StandardScaler()
-    window_length = 600
-    stride_length = 30
-    emg_length = len(dataX_test)
-    predLabel_seq = []
-    vecTime = []
-    timeSeq = []
+#     [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(test_RawX, centers, estimator)
+#     predicted_label, t_post = post_ProcessLabels(predictedSeq)
     
-    
-    count = 0
-    while True:
-        start_point = stride_length*count + 1
-        end_point = start_point + window_length - 1
-        
-        if end_point > emg_length:
-            break
-        
-        tStart = time.time()
-        window_emg = dataX_test.iloc[start_point:end_point]   
-        filt_window_emg = window_emg.apply(preProcessEMGSegment)
-        window_sum  = filt_window_emg.sum(axis=1)
-        idx_start, idx_end = detectMuscleActivity(window_sum)
-        t_acq = time.time()-tStart
-        
-        if (idx_start != 1) & (idx_end != len(window_emg)) & ((idx_end - idx_start) > 85):
-            
-            tStart = time.time()
-            
-            filt_window_emg1 = window_emg.apply(preProcessEMGSegment)
-            window_emg1 = filt_window_emg1.iloc[idx_start:idx_end]
-            
-            
-            t_filt = time.time() - tStart
-            
-            tStart = time.time()
-            featVector = featureExtractionf([window_emg1], centers)
-            featVectorP = preProcessFeatureVector(featVector)
-            t_featExtra =  time.time() - tStart
-            
-            tStart = time.time()
-            x = model.predict_proba(featVectorP).tolist()
-            probNN = x[0]
-            max_probNN = max(probNN)
-            predicted_labelNN = probNN.index(max_probNN) + 1
-            t_classiNN = time.time() - tStart
-            
-            tStart = time.time()
-            if max_probNN <= 0.5:
-                predicted_labelNN = 1
-            t_threshNN = time.time() - tStart 
-            #print(predicted_labelNN)
-           
-        else:
-            
-            t_filt = 0
-            t_featExtra = 0
-            t_classiNN = 0
-            t_threshNN = 0
-            predicted_labelNN = 1
-            #print('1')
-            
-            
-        count = count + 1
-        predLabel_seq.append(predicted_labelNN)
-        vecTime.append(start_point+(window_length/2)+50)
-        timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
-    
-    pred_seq = majorite_vote(predLabel_seq, 4, 4)    
-        
-    return  pred_seq, vecTime, timeSeq
-
-
-
-def unique(list1): 
-    # insert the list to the set 
-    list_set = set(list1) 
-    # convert the set to the list 
-    unique_list = (list(list_set)) 
-    
-    return unique_list 
-
-
-def post_ProcessLabels(predicted_Seq):   
-    # This function post-processes the sequence of labels returned by a
-    # classifier. Each row of predictedSeq is a sequence of 
-    # labels predicted by a different classifier for the jth example belonging
-    # to the ith actual class.
-    
-    time_post = []
-    predictions = predicted_Seq.copy()
-    predictions[0] = 1
-    postProcessed_Labels = predictions.copy()
-        
-    for i in range(1,len(predictions)):
-        
-        tStart = time.time()
-        
-        if predictions[i] == predictions[i-1]:
-            cond = 1
-        else:    
-            cond = 0
-            
-        postProcessed_Labels[i] =  (1 * cond) + (predictions[i]* (1 - cond))
-        t_post = time.time() - tStart
-        time_post.append(t_post)
-        
-    time_post.insert(0,time_post[0])     
-    uniqueLabels = unique(postProcessed_Labels)
-    
-    an_iterator = filter(lambda number: number != 1, uniqueLabels)
-    uniqueLabelsWithoutRest = list(an_iterator)
+#     # Computing the time of processing
+#     estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
        
-    if not uniqueLabelsWithoutRest:
-        
-        finalLabel = 1
-        
-    else:
-        
-        if len(uniqueLabelsWithoutRest) > 1:
-            finalLabel = uniqueLabelsWithoutRest[0]
-            
-        else:
-            finalLabel = uniqueLabelsWithoutRest[0]
-                   
+#     return predicted_label, predictedSeq, vec_time, estimatedTime
+
+
+
+def testing_prediction(user,sample,centers,estimator):
     
-    return finalLabel, time_post
-
-
-
-def code2gesture(code):
-    # This function returns the gesture name from code
-           
-    if code == 1:     
-        label = 'noGesture'
-        
-    elif code == 2:
-        label = 'fist'
-                      
-    elif code == 3: 
-        label = 'waveIn'
-        
-    elif code == 4:
-        label = 'waveOut'
     
-    elif code == 5:
-        label = 'open'            
-
-    elif code == 6:
-        label = 'pinch'
-                       
-        
-    return label
-
-
-def code2gesture_labels(vector_labels_prev):
-    # This function returns a prediction vector with gesture names
-    
-    v2 = []
-    
-    for window in vector_labels_prev:
-        
-        vec_prev = code2gesture(window)        
-        v2.append(vec_prev)
-    
-    return v2    
-
-
-def classify_gesture(test_RawX, centers, estimator): 
-    # This function applies a hand gesture recognition model based on artificial
-    # feed-forward neural networks and automatic feature extraction to a set of
-    # EMGs conatined in the set test_RawX
-    
+    test_RawX = get_x_test(user,sample) 
     [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(test_RawX, centers, estimator)
     predicted_label, t_post = post_ProcessLabels(predictedSeq)
     
     # Computing the time of processing
     estimatedTime =  [sum(x) for x in zip(time_seq, t_post)]
-       
-    return predicted_label, predictedSeq, vec_time, estimatedTime
 
-
-def testing_prediction(user,sample):
-    
-    
-    test_RawX = get_x_test(user,sample) 
-    predicted_label, predictedSeq, vec_time, estimatedTime = classify_gesture(test_RawX, centers, estimator)
     
     return predicted_label, predictedSeq, vec_time, estimatedTime
 
@@ -447,26 +229,24 @@ for user_data in files:
         centers = bestCenter_Class(train_segment_X)
         
         # Feature extraction by computing the DTW distance between each training
-        # example and the center of each cluster     
-        features = featureExtractionf(train_segment_X, centers)
-        
+        # example and the center of each cluster           
         # Preprocessing the feature vectors
-        X_train = preProcessFeatureVector(features)
+        X_train = getFeatureExtraction(train_segment_X, centers)
         
         # Training the feed-forward NN
         y_train = decode_targets(get_y_train(train_samples))
         X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
         
-        # estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
+        estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
 
         # Reading the testing samples    
-        # test_samples = user['testingSamples']  
+        test_samples = user['testingSamples']  
         
         # Concatenating the predictions of all the users for computing the
         # errors
-        # results = ([testing_prediction(user,sample) for sample in test_samples])         
+        results = ([testing_prediction(user, sample, centers, estimator) for sample in test_samples])         
         
-    # responses[name_user]['testing'] = recognition_results(results)
+     responses[name_user]['testing'] = recognition_results(results)
 
 
            

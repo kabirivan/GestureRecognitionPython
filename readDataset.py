@@ -37,3 +37,41 @@ def get_y_train(train_samples):
         
            
     return y_train
+
+
+def code2gesture(code):
+    # This function returns the gesture name from code
+           
+    if code == 1:     
+        label = 'noGesture'
+        
+    elif code == 2:
+        label = 'fist'
+                      
+    elif code == 3: 
+        label = 'waveIn'
+        
+    elif code == 4:
+        label = 'waveOut'
+    
+    elif code == 5:
+        label = 'open'            
+
+    elif code == 6:
+        label = 'pinch'
+                       
+        
+    return label
+
+
+def code2gesture_labels(vector_labels_prev):
+    # This function returns a prediction vector with gesture names
+    
+    v2 = []
+    
+    for window in vector_labels_prev:
+        
+        vec_prev = code2gesture(window)        
+        v2.append(vec_prev)
+    
+    return v2  
