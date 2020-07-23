@@ -362,7 +362,6 @@ def majorite_vote(data, before, after):
 
 
 def classifyEMG_SegmentationNN(dataX_test, centers, model):
-
     # This function applies a hand gesture recognition model based on artificial
     # feed-forward neural networks and automatic feature extraction to a set of
     # EMGs conatined in the set test_X. The actual label of each EMG in test_X
@@ -451,8 +450,7 @@ def unique(list1):
     return unique_list 
 
 
-def post_ProcessLabels(predicted_Seq):
-    
+def post_ProcessLabels(predicted_Seq):   
     # This function post-processes the sequence of labels returned by a
     # classifier. Each row of predictedSeq is a sequence of 
     # labels predicted by a different classifier for the jth example belonging
@@ -500,7 +498,6 @@ def post_ProcessLabels(predicted_Seq):
 
 
 def code2gesture(code):
-    
     # This function returns the gesture name from code
     
         
@@ -534,8 +531,8 @@ def code2gesture(code):
 
 
 def code2gesture_labels(vector_labels_prev):
-    
     # This function returns a prediction vector with gesture names
+    
     v2 = []
     
     for window in vector_labels_prev:
@@ -635,8 +632,7 @@ for user_data in files:
         # Concatenating the predictions of all the users for computing the
         # errors
         results = ([testing_prediction(user,sample) for sample in test_samples])         
-
-
+        
     responses[name_user]['testing'] = recognition_results(results)
 
 
