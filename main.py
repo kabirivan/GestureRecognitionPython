@@ -86,28 +86,22 @@ def get_y_train(train_samples):
         
         y = train_samples[sample]['gestureName']
         
-        if y == 'noGesture':
-            
+        if y == 'noGesture':            
             code = 1
             
-        elif y == 'fist':
-            
+        elif y == 'fist':    
             code = 2
             
-        elif y == 'waveIn':
-            
+        elif y == 'waveIn':       
             code = 3
             
-        elif y == 'waveOut':
-            
+        elif y == 'waveOut':        
             code = 4
             
-        elif y == 'open':
-            
+        elif y == 'open':        
             code = 5
             
-        elif y == 'pinch':
-            
+        elif y == 'pinch':       
             code = 6
                       
         y_train.append(code)
@@ -165,8 +159,7 @@ def preProcessEMGSegment(EMGsegment_in):
     return EMGsegment_out
 
 
-def detectMuscleActivity(emg_sum):
-    
+def detectMuscleActivity(emg_sum): 
     # This function segments in a EMG the region corresponding to a muscle
     # contraction. The indices idxStart and idxEnd correspond to the begining
     # and the end of such a region
@@ -499,31 +492,23 @@ def post_ProcessLabels(predicted_Seq):
 
 def code2gesture(code):
     # This function returns the gesture name from code
-    
-        
-    if code == 1:
-        
+           
+    if code == 1:     
         label = 'noGesture'
         
     elif code == 2:
-        
         label = 'fist'
                       
-    elif code == 3:
-        
+    elif code == 3: 
         label = 'waveIn'
         
     elif code == 4:
-        
         label = 'waveOut'
     
     elif code == 5:
-        
         label = 'open'            
 
-
     elif code == 6:
-        
         label = 'pinch'
                        
         
@@ -543,8 +528,7 @@ def code2gesture_labels(vector_labels_prev):
     return v2    
 
 
-def classify_gesture(test_RawX, centers, estimator):
-    
+def classify_gesture(test_RawX, centers, estimator): 
     # This function applies a hand gesture recognition model based on artificial
     # feed-forward neural networks and automatic feature extraction to a set of
     # EMGs conatined in the set test_RawX
@@ -568,8 +552,7 @@ def testing_prediction(user,sample):
 
 
 
-def recognition_results(results):
-    
+def recognition_results(results):  
      # This function save the responses of each user into a dictionary
 
     d = collections.defaultdict(dict)
