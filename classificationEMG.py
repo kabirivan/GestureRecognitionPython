@@ -88,7 +88,7 @@ def classifyEMG_SegmentationNN(dataX_test, centers, model):
         vecTime.append(start_point+(window_length/2)+50)
         timeSeq.append(t_acq + t_filt + t_featExtra + t_classiNN + t_threshNN)    
     
-    pred_seq = majorite_vote(predLabel_seq, 4, 4)    
+    pred_seq = majorite_vote(predLabel_seq, 5, 5)    
         
     return  pred_seq, vecTime, timeSeq
 

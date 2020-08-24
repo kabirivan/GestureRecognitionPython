@@ -126,13 +126,10 @@ def bestCenter_Class(train_segment_X):
 
 def getFeatureExtraction(emg_filtered, centers):
     
-    features = featureExtractionf(emg_filtered, centers)
-    
+    features = featureExtractionf(emg_filtered, centers)  
     dataX = preProcessFeatureVector(features)
     
     return dataX
-    
-    
     
     
 
@@ -169,9 +166,7 @@ def trainFeedForwardNetwork(X_train,y_train, X_test, y_test):
 
 
 
-def testing_prediction(user,sample,centers,estimator):
-    
-    
+def testing_prediction(user,sample,centers,estimator): 
     test_RawX = get_x_test(user,sample) 
     [predictedSeq, vec_time, time_seq]= classifyEMG_SegmentationNN(test_RawX, centers, estimator)
     predicted_label, t_post = post_ProcessLabels(predictedSeq)
@@ -194,7 +189,7 @@ def recognition_results(results):
         d['idx_%s' %i]['class'] = code2gesture(results[i][0])
         d['idx_%s' %i]['vectorOfLabels'] = code2gesture_labels(results[i][1])
         d['idx_%s' %i]['vectorOfTimePoints'] = results[i][2]
-        d['idx_%s' %i]['vectorOfProcessingTimes']= results[i][3]    
+        d['idx_%s' %i]['vectorOfProcessingTime']= results[i][3]    
        
     return d
 
@@ -246,13 +241,11 @@ for user_data in files:
         # errors
         results = ([testing_prediction(user, sample, centers, estimator) for sample in test_samples])         
         
-     responses[name_user]['testing'] = recognition_results(results)
-
+    responses[name_user]['testing'] = recognition_results(results)
 
            
-# with open('responses5.json', 'w') as json_file:
-  # json.dump(responses, json_file)             
-
+with open('responses5.json', 'w') as json_file:
+  json.dump(responses, json_file)             
 
 
 

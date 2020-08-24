@@ -559,10 +559,10 @@ def recognition_results(results):
     
     for i in range(0,150):
                 
-        d['idx_%s' %i]['class'] = code2gesture(results[i][0])
-        d['idx_%s' %i]['vectorOfLabels'] = code2gesture_labels(results[i][1])
-        d['idx_%s' %i]['vectorOfTimePoints'] = results[i][2]
-        d['idx_%s' %i]['vectorOfProcessingTimes']= results[i][3]    
+        d['class']['idx_%s' %i] = code2gesture(results[i][0])
+        d['vectorOfLabels']['idx_%s' %i]= code2gesture_labels(results[i][1])
+        d['vectorOfTimePoints']['idx_%s' %i] = results[i][2]
+        d['vectorOfProcessingTime']['idx_%s' %i]= results[i][3]    
        
     return d
 
@@ -616,11 +616,11 @@ for user_data in files:
         # errors
         results = ([testing_prediction(user,sample) for sample in test_samples])         
         
-    responses[name_user]['testing'] = recognition_results(results)
+    responses['testing'][name_user] = recognition_results(results)
 
 
            
-with open('responses5.json', 'w') as json_file:
+with open('responsesNF.json', 'w') as json_file:
   json.dump(responses, json_file)             
 
 
