@@ -202,13 +202,11 @@ folderData = 'trainingJSON'
 files = []
 
 
+entries = os.listdir(folderData)
 
-for root, dirs, files in os.walk(folderData):
-     print('Dataset Ready !')
-         
-     
-for user_data in files:
-    file_selected = root + '/' + user_data 
+for entry in entries:
+    file_selected = folderData + '/' + entry + '/' + entry + '.json'
+    
     with open(file_selected) as file:
         user = json.load(file)      
         name_user = user['userInfo']['name']
