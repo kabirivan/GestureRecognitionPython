@@ -51,6 +51,7 @@ from classificationEMG import *
 
 #%% Functions
 
+
         
 def get_x_train(user,sample):
     # This function reads the time series(x) of the user (Training Sample)
@@ -199,8 +200,6 @@ def recognition_results(results):
 responses = collections.defaultdict(dict)
 num_gestures = 6
 folderData = 'trainingJSON'
-files = []
-
 
 entries = os.listdir(folderData)
 
@@ -212,38 +211,87 @@ for entry in entries:
         name_user = user['userInfo']['name']
         print(name_user)  
 
+
+
+class RecognitionModel:
+    
+    num_gestures = 6
+    
+    def __init__(self,version,user):
+        self.user = user
+        self.version = version
+        
+     
+    def preProcessingData(self):
+        sample_type = self.version+'Samples'
         # Reading the training samples
-        train_samples = user['trainingSamples']
-        
+        train_samples = self.user[sample_type]
         # Preprocessing
-        train_segment_X = [get_x_train(user,sample) for sample in train_samples]  
+        train_segment_X = [get_x_train(self.user,sample) for sample in train_samples] 
         
+        return train_segment_X 
+   
+    def featureExtraction(self, train_data):         
         # Finding the EMG that is the center of each class
-        centers = bestCenter_Class(train_segment_X)
-        
+        centers = bestCenter_Class(train_data)  
         # Feature extraction by computing the DTW distance between each training
         # example and the center of each cluster           
-        # Preprocessing the feature vectors
-        X_train = getFeatureExtraction(train_segment_X, centers)
+        # Preprocessing the feature vectors    
+        X_train = getFeatureExtraction(train_data, centers)
+         
+        return X_train
+         
+         
+       
         
-        # Training the feed-forward NN
-        y_train = decode_targets(get_y_train(train_samples))
-        X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
         
-        estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
+       
+        
+training = RecognitionModel('training', user)        
+a = training.preProcessingData()
+b = training.featureExtraction(a)
 
-        # Reading the testing samples    
-        test_samples = user['testingSamples']  
+
+# for entry in entries:
+#     file_selected = folderData + '/' + entry + '/' + entry + '.json'
+    
+#     with open(file_selected) as file:
+#         user = json.load(file)      
+#         name_user = user['userInfo']['name']
+#         print(name_user)  
+
+#         # Reading the training samples
+#         train_samples = user['trainingSamples']
         
-        # Concatenating the predictions of all the users for computing the
-        # errors
-        results = ([testing_prediction(user, sample, centers, estimator) for sample in test_samples])         
+#         # Preprocessing
+#         train_segment_X = [get_x_train(user,sample) for sample in train_samples]  
         
-    responses[name_user]['testing'] = recognition_results(results)
+#         # Finding the EMG that is the center of each class
+#         centers = bestCenter_Class(train_segment_X)
+        
+#         # Feature extraction by computing the DTW distance between each training
+#         # example and the center of each cluster           
+#         # Preprocessing the feature vectors
+#         X_train = getFeatureExtraction(train_segment_X, centers)
+        
+#         # Training the feed-forward NN
+#         y_train = decode_targets(get_y_train(train_samples))
+#         X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
+        
+#         estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)
+
+#         # Reading the testing samples    
+#         test_samples = user['testingSamples']  
+        
+#         # Concatenating the predictions of all the users for computing the
+#         # errors
+#         results = ([testing_prediction(user, sample, centers, estimator) for sample in test_samples])         
+        
+#     responses[name_user]['testing'] = recognition_results(results)
 
            
-with open('responses5.json', 'w') as json_file:
-  json.dump(responses, json_file)             
+# with open('responses5.json', 'w') as json_file:
+#   json.dump(responses, json_file)             
 
 
 
