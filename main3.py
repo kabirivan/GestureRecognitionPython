@@ -203,15 +203,6 @@ folderData = 'trainingJSON'
 
 entries = os.listdir(folderData)
 
-for entry in entries:
-    file_selected = folderData + '/' + entry + '/' + entry + '.json'
-    
-    with open(file_selected) as file:
-        user = json.load(file)      
-        name_user = user['userInfo']['name']
-        print(name_user)  
-
-
 
 class RecognitionModel:
     
@@ -286,7 +277,7 @@ for entry in entries:
         
         estimator = currentUser.trainSoftmaxNN(X_train)
         
-        result = currentUser.classifyGestures('testing', estimator, centers)    
+        results = currentUser.classifyGestures('testing', estimator, centers)    
         
     response[name_user]['testing'] = recognition_results(results)
 
