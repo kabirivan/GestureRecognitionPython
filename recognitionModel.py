@@ -1,31 +1,63 @@
-class recognitionModel:
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Aug 27 23:59:24 2020
+
+@author: aguasharo
+"""
+
+from recognitionFunctions import *
+
+
+class RecognitionModel:
     
+    num_gestures = 6
     
-    
-  def __init__(self, user, sample):
-      self.user = user
-      self.sample = sample
+    def __init__(self,version,user):
+        self.user = user
+        self.version = version
+        
+     
+    def preProcessingData(self):
+        sample_type = self.version+'Samples'
+        # Reading the training samples
+        train_samples = self.user[sample_type]
+        # Preprocessing
+        train_segment_X = [get_x_train(self.user,sample) for sample in train_samples] 
+        
+        return train_segment_X 
+   
+    def featureExtraction(self, train_data):         
+        # Finding the EMG that is the center of each class
+        centers = bestCenter_Class(train_data)  
+        # Feature extraction by computing the DTW distance between each training
+        # example and the center of each cluster           
+        # Preprocessing the feature vectors    
+        X_train = getFeatureExtraction(train_data, centers)
+         
+        return X_train, centers
+         
+         
+    def trainSoftmaxNN(self, X_train):
+        sample_type = self.version+'Samples'
+        # Reading the training samples
+        train_samples = self.user[sample_type]      
+        # Training the feed-forward NN
+        y_train = decode_targets(get_y_train(train_samples)) 
+        X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
+        estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)          
+        
+        return estimator
+       
       
-  def get_x_train(self):
-    # This function reads the time series(x) of the user (Training Sample)
-    train_samples = self.user['trainingSamples']
-    x = (train_samples[self.sample]['emg'])
-    # Divide to 128 for having a signal between -1 and 1
-    df = pd.DataFrame.from_dict(x) / 128
-    # Apply filter
-    train_filtered_X = df.apply(preProcessEMGSegment)
-    # Segment the filtered EMG signal
-    train_segment_X = EMG_segment(train_filtered_X)
+    def classifyGestures(self,version, estimator, centers) :
+        
+        sample_type = self.version+'Samples'
+        # Reading the testing samples    
+        test_samples = self.user[sample_type]      
+        # Concatenating the predictions of all the users for computing the
+        # errors
+        results = ([testing_prediction(self.user, sample, centers, estimator) for sample in test_samples]) 
+        
+        return results
     
-    return train_segment_X
-
-    
-
-def preProcessEMGSegment
-
-
-if __name__ == "__main__":
-  user = recognitionModel(user1, 6)
-    pass
-
-  
