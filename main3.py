@@ -71,6 +71,8 @@ for entry in entries:
     file_selected = folderData + '/' + entry + '/' + entry + '.json'
     
     with open(file_selected) as file:
+        
+        # Read user data
         user = json.load(file)      
         name_user = user['userInfo']['name']
         print(name_user)  
@@ -90,7 +92,7 @@ for entry in entries:
      
      # Concatenating the predictions of all the users for computing the
      # errors    
-    response[name_user]['testing'] = recognition_results(results)
+    response[name_user]['testing'] = results
 
            
 with open('responses5.json', 'w') as json_file:

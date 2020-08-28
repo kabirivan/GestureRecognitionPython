@@ -57,7 +57,9 @@ class RecognitionModel:
         test_samples = self.user[sample_type]      
         # Concatenating the predictions of all the users for computing the
         # errors
-        results = ([testing_prediction(self.user, sample, centers, estimator) for sample in test_samples]) 
+        response = ([testing_prediction(self.user, sample, centers, estimator) for sample in test_samples]) 
+        
+        results = recognition_results(response)
         
         return results
     

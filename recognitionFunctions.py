@@ -13,6 +13,30 @@ from featureExtraction import *
 from classificationEMG import *
 
 
+
+from sklearn.manifold import TSNE
+import seaborn as sns
+
+
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+from sklearn.preprocessing import LabelEncoder
+from keras.utils import np_utils
+from keras.optimizers import Adam, SGD
+
+
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+
+
+from sklearn.preprocessing import StandardScaler
+
+import collections
+from collections import Counter
+
+
+
 def get_x_train(user,sample):
     # This function reads the time series(x) of the user (Training Sample)
     train_samples = user['trainingSamples']
