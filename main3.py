@@ -197,7 +197,7 @@ def recognition_results(results):
 
 
 #%% Read user data
-responses = collections.defaultdict(dict)
+response = collections.defaultdict(dict)
 num_gestures = 6
 folderData = 'trainingJSON'
 
@@ -239,17 +239,87 @@ class RecognitionModel:
         # Preprocessing the feature vectors    
         X_train = getFeatureExtraction(train_data, centers)
          
-        return X_train
+        return X_train, centers
          
          
+    def trainSoftmaxNN(self, X_train):
+        sample_type = self.version+'Samples'
+        # Reading the training samples
+        train_samples = self.user[sample_type]      
+        # Training the feed-forward NN
+        y_train = decode_targets(get_y_train(train_samples)) 
+        X_val, y_val = get_xy_val(X_train, get_y_train(train_samples)) 
+        estimator = trainFeedForwardNetwork(X_train, y_train, X_val, y_val)          
+        
+        return estimator
        
+      
+    def classifyGestures(self,version, estimator, centers) :
         
+        sample_type = self.version+'Samples'
+        # Reading the testing samples    
+        test_samples = self.user[sample_type]      
+        # Concatenating the predictions of all the users for computing the
+        # errors
+        results = ([testing_prediction(self.user, sample, centers, estimator) for sample in test_samples]) 
         
-       
+        return results
+    
+
+
+  
+
+
+for entry in entries:
+    file_selected = folderData + '/' + entry + '/' + entry + '.json'
+    
+    with open(file_selected) as file:
+        user = json.load(file)      
+        name_user = user['userInfo']['name']
+        print(name_user)  
+
+        currentUser = RecognitionModel('training', user)     
         
-training = RecognitionModel('training', user)        
-a = training.preProcessingData()
-b = training.featureExtraction(a)
+        train_segment_X  = currentUser.preProcessingData()
+        
+        [X_train, centers] = currentUser.featureExtraction(train_segment_X)
+        
+        estimator = currentUser.trainSoftmaxNN(X_train)
+        
+        result = currentUser.classifyGestures('testing', estimator, centers)    
+        
+    response[name_user]['testing'] = recognition_results(results)
+
+           
+with open('responses5.json', 'w') as json_file:
+  json.dump(response, json_file)             
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # for entry in entries:
