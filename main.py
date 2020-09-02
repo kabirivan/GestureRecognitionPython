@@ -10,7 +10,7 @@ from __future__ import print_function
 
 import json
 import os
-
+import collections
 
 from RecognitionModel import RecognitionModel
         
@@ -22,13 +22,15 @@ from RecognitionModel import RecognitionModel
 response = collections.defaultdict(dict)
 num_gestures = 6
 folderData = 'trainingJSON'
-
+cont = 0
 entries = os.listdir(folderData)
-
-
+num_users = len(entries)
 
 
 for entry in entries:
+    cont = cont + 1
+    print('Processing data from user: ' + str(cont) + ' / '+ str(num_users))
+    
     file_selected = folderData + '/' + entry + '/' + entry + '.json'
     
     with open(file_selected) as file:
@@ -36,7 +38,6 @@ for entry in entries:
         # Read user data
         user = json.load(file)      
         name_user = user['userInfo']['name']
-        print(name_user)  
 
         currentUser = RecognitionModel('training', user)     
         # Preprocessing
