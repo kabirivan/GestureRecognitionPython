@@ -10,46 +10,7 @@ from __future__ import print_function
 
 import json
 import os
-import itertools
-import pandas as pd
 
-
-
-from sklearn.manifold import TSNE
-import seaborn as sns
-
-
-import keras
-from keras.models import Sequential
-from keras.layers import Dense
-from sklearn.preprocessing import LabelEncoder
-from keras.utils import np_utils
-from keras.optimizers import Adam, SGD
-
-
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score
-
-
-from sklearn.preprocessing import StandardScaler
-
-import collections
-from collections import Counter
-
-import multiprocessing as mp
-from joblib import Parallel, delayed
-
-
-
-from readDataset import *
-from preProcessing import *
-from featureExtraction import *
-from classificationEMG import *
-
-
-
-
-#%% Functions
 
 from RecognitionModel import RecognitionModel
         
