@@ -21,7 +21,7 @@ from RecognitionModel import RecognitionModel
 #%% Read user data
 response = collections.defaultdict(dict)
 num_gestures = 6
-folderData = 'trainingJSON'
+folderData = 'testingJSON'
 cont = 0
 entries = os.listdir(folderData)
 num_users = len(entries)
@@ -57,7 +57,7 @@ for entry in entries:
     response[name_user]['testing'] = results
 
            
-with open('responses5.json', 'w') as json_file:
+with open('responses.json', 'w') as json_file:
   json.dump(response, json_file)             
 
 
